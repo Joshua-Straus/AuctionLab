@@ -1,7 +1,8 @@
 from auction_sim.agents import RandomAgent, ShadingAgent, TruthfulAgent
-from auction_sim.display import print_auction_result
+from auction_sim.auctions import FirstPriceAuction, SecondPriceAuction
+from auction_sim.data import results_to_dataframe
+from auction_sim.metrics import summarize_agents, summarize_auction
 from auction_sim.simulation import Simulation
-from auction_sim.auctions import FirstPriceAuction
 
 def main():
     agents = [
@@ -11,10 +12,22 @@ def main():
     ]
     sim = Simulation(FirstPriceAuction(), num_rounds=10, agents=agents, seed=1453)
     results = sim.run()
-    print("Running first-price auction simulation...\n")
+    df = results_to_dataframe(results)
 
-    for result in results:
-        print_auction_result(result)
+    auction_summary = summarize_auction(df)
+    agent_summary = summarize_agents(df)
+
+    print("\nAuction Summary")
+    print("-" * 50)
+    for key, value in auction_summary.items():
+        print(f"{key}: {value}")
+
+    print("\nAgent Summary")
+    print("-" * 50)
+    print(agent_summary.to_string(index=False))
+
+    df.to_csv("outputs/results.csv", index=False)
+    agent_summary.to_csv("outputs/agent_summary.csv", index=False)
 
 if __name__ == "__main__":
     main()
