@@ -28,12 +28,12 @@ def summarize_auction(df: pd.DataFrame) -> dict:
     Computes auction-level summary metrics.
     """
 
-    n_rounds = df["round_id"].nunique()
+    num_rounds = df["round_id"].nunique()
 
     round_level = df.drop_duplicates("round_id")
 
     return {
-        "n_rounds": n_rounds,
+        "num_rounds": num_rounds,
         "auction_type": df["auction_type"].iloc[0],
         "avg_seller_revenue": round_level["seller_revenue"].mean(),
         "total_seller_revenue": round_level["seller_revenue"].sum(),

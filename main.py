@@ -1,33 +1,22 @@
-from auction_sim.agents import RandomAgent, ShadingAgent, TruthfulAgent
-from auction_sim.auctions import FirstPriceAuction, SecondPriceAuction
-from auction_sim.data import results_to_dataframe
-from auction_sim.metrics import summarize_agents, summarize_auction
-from auction_sim.simulation import Simulation
+from auction_sim.experiments import run_baseline_comparison
 
 def main():
-    agents = [
-        TruthfulAgent(agent_id="truthful_1"),
-        RandomAgent(agent_id="random_1"),
-        ShadingAgent(agent_id="shading_1", alpha =0.75)
-    ]
-    sim = Simulation(FirstPriceAuction(), num_rounds=10, agents=agents, seed=1453)
-    results = sim.run()
-    df = results_to_dataframe(results)
+    results = run_baseline_comparison(num_rounds=10_000)
 
-    auction_summary = summarize_auction(df)
-    agent_summary = summarize_agents(df)
+    for auction_name, experiment_result in results.items():
+        print("\n" + "=" * 70)
+        print(f"Auction: {auction_name}")
+        print("=" * 70)
 
-    print("\nAuction Summary")
-    print("-" * 50)
-    for key, value in auction_summary.items():
-        print(f"{key}: {value}")
+        print("\nAuction Summary")
+        print("-" * 70)
+        for key, value in experiment_result["auction_summary"].items():
+            print(f"{key}: {value}")
 
-    print("\nAgent Summary")
-    print("-" * 50)
-    print(agent_summary.to_string(index=False))
+        print("\nAgent Summary")
+        print("-" * 70)
+        print(experiment_result["agent_summary"].to_string(index=False))
 
-    df.to_csv("outputs/results.csv", index=False)
-    agent_summary.to_csv("outputs/agent_summary.csv", index=False)
 
 if __name__ == "__main__":
     main()
