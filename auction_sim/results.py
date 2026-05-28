@@ -1,3 +1,7 @@
+"""
+File to define data structures for storing auction results and bid records.
+"""
+
 from dataclasses import dataclass
 
 

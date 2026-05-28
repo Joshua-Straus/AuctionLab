@@ -1,13 +1,26 @@
+"""
+File to define the main Simulation class that runs the auction simulations.
+"""
+
 from __future__ import annotations
-from dataclasses import dataclass
-from auction_sim.agents import Agent
-from auction_sim.results import AuctionResult, BidRecord
-from auction_sim.auctions import Auction
+
 import random
 
-class Simulation:
+from auction_sim.agents import Agent
+from auction_sim.auctions import Auction
+from auction_sim.results import AuctionResult
 
-    def __init__(self, auction: Auction, low_value: float = 0, high_value: float = 100, num_rounds: int = 100, agents: list = None, seed: int = None):
+
+class Simulation:
+    def __init__(
+        self,
+        auction: Auction,
+        low_value: float = 0,
+        high_value: float = 100,
+        num_rounds: int = 100,
+        agents: list[Agent] | None = None,
+        seed: int | None = None,
+    ):
         self.auction = auction
         self.low_value = low_value
         self.high_value = high_value
@@ -23,18 +36,21 @@ class Simulation:
             bids = {}
             for agent in self.agents:
                 valuation = random.uniform(self.low_value, self.high_value)
-                bid = agent.bid(valuation, context={
+                bid = agent.bid(
+                    valuation,
+                    context={
                         "round_id": round_id,
                         "auction_type": self.auction.auction_type,
-                    })
+                    },
+                )
                 valuations[agent.agent_id] = valuation
                 bids[agent.agent_id] = bid
 
-                result = self.auction.run(
-                    round_id=round_id,
-                    valuations=valuations,
-                    bids=bids
-                )
+            result = self.auction.run(
+                round_id=round_id,
+                valuations=valuations,
+                bids=bids,
+            )
                 
             for agent in self.agents:
                 agent.update(

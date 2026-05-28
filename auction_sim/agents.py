@@ -1,6 +1,21 @@
+"""
+File to store different agent strategies for auctions.
+"""
+
 from __future__ import annotations
+
 import random
 from dataclasses import dataclass
+
+
+def validate_value(value: float) -> None:
+    if value < 0:
+        raise ValueError("Private valuation cannot be negative.")
+
+
+def validate_alpha(alpha: float) -> None:
+    if alpha < 0:
+        raise ValueError("Alpha must be nonnegative.")
 
 
 @dataclass
@@ -31,6 +46,7 @@ class TruthfulAgent(Agent):
     """
 
     def bid(self, value: float, context: dict | None = None) -> float:
+        validate_value(value)
         return value
 
 @dataclass
@@ -40,6 +56,7 @@ class RandomAgent(Agent):
     """
 
     def bid(self, value: float, context: dict | None = None) -> float:
+        validate_value(value)
         return random.uniform(0, value)
 
 @dataclass
@@ -48,7 +65,11 @@ class ShadingAgent(Agent):
     Agent that bids a fraction of its valuation.
     """
 
-    alpha: float  # Default to bidding 75% of valuation
+    alpha: float
+
+    def __post_init__(self) -> None:
+        validate_alpha(self.alpha)
 
     def bid(self, value: float, context: dict | None = None) -> float:
+        validate_value(value)
         return value * self.alpha

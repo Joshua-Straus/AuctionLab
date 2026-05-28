@@ -1,3 +1,7 @@
+"""
+File to define different auction mechanisms.
+"""
+
 from __future__ import annotations
 
 import random
@@ -27,7 +31,7 @@ class FirstPriceAuction(Auction):
     """
     First-price sealed-bid auction.
     """
-    auction_type: str = "second_price"
+    auction_type: str = "first_price"
 
     def run(
         self,

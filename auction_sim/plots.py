@@ -1,3 +1,7 @@
+"""
+File to handle plotting of auction results.
+"""
+
 from pathlib import Path
 
 import matplotlib.pyplot as plt

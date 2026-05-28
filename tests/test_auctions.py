@@ -1,6 +1,12 @@
 from auction_sim.auctions import FirstPriceAuction
 
 
+def test_first_price_auction_type():
+    auction = FirstPriceAuction()
+
+    assert auction.auction_type == "first_price"
+
+
 def test_first_price_highest_bidder_wins():
     auction = FirstPriceAuction()
 

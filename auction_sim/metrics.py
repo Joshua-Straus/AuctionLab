@@ -1,3 +1,7 @@
+"""
+File to compute various metrics and summaries from auction simulation results.
+"""
+
 import pandas as pd
 
 
@@ -15,10 +19,29 @@ def summarize_agents(df: pd.DataFrame) -> pd.DataFrame:
             avg_bid=("bid", "mean"),
             avg_valuation=("valuation", "mean"),
             total_spent=("price_paid", "sum"),
+            avg_regret=("regret", "mean"),
+            total_regret=("regret", "sum"),
         )
         .reset_index()
-        .sort_values("total_profit", ascending=False)
     )
+
+    avg_profit_when_winner = (
+        df[df["is_winner"]]
+        .groupby("agent_id")["profit"]
+        .mean()
+        .rename("avg_profit_when_winner")
+        .reset_index()
+    )
+
+    summary = summary.merge(
+        avg_profit_when_winner,
+        on="agent_id",
+        how="left",
+    )
+    summary["avg_profit_when_winner"] = summary[
+        "avg_profit_when_winner"
+    ].fillna(0.0)
+    summary = summary.sort_values("total_profit", ascending=False)
 
     return summary
 
@@ -38,4 +61,7 @@ def summarize_auction(df: pd.DataFrame) -> dict:
         "avg_seller_revenue": round_level["seller_revenue"].mean(),
         "total_seller_revenue": round_level["seller_revenue"].sum(),
         "avg_winning_price": round_level["seller_revenue"].mean(),
+        "allocative_efficiency": round_level["is_efficient_round"].mean(),
+        "avg_price_to_winner_value": round_level["price_to_winner_value"].mean(),
+        "avg_winner_valuation": round_level["winner_valuation"].mean(),
     }
