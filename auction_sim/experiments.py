@@ -14,9 +14,14 @@ from auction_sim.auctions import Auction, FirstPriceAuction, SecondPriceAuction
 from auction_sim.config import ExperimentConfig
 from auction_sim.data import results_to_dataframe
 from auction_sim.metrics import summarize_agents, summarize_auction
-from auction_sim.plots import plot_agent_profit, plot_agent_win_rate
+from auction_sim.plots import (
+    plot_agent_profit,
+    plot_agent_win_rate,
+    plot_competition_revenue,
+    plot_strategy_profit,
+    plot_strategy_win_rate,
+)
 from auction_sim.simulation import Simulation
-
 
 def make_baseline_agents():
     """
@@ -41,7 +46,6 @@ def make_auction(auction_type: str) -> Auction:
 
     if auction_type == "second_price":
         return SecondPriceAuction()
-
     raise ValueError(f"Unknown auction type: {auction_type}")
 
 
@@ -232,5 +236,89 @@ def run_competition_sweep(
 
     sweep_df = pd.DataFrame(rows)
     sweep_df.to_csv(Path(output_dir) / "competition_sweep.csv", index=False)
+    plot_competition_revenue(
+        sweep_df,
+        str(Path(output_dir) / "competition_seller_revenue.png"),
+    )
+
+    return sweep_df
+
+def run_strategy_sweep(
+    alpha_values: list[float] | None = None,
+    num_rounds: int = 10_000,
+    auction_type: str = "first_price",
+    num_agents_per_alpha: int = 8,
+    low_value: float = 0.0,
+    high_value: float = 100.0,
+    seed: int | None = 42,
+    output_dir: str = "outputs",
+) -> pd.DataFrame:
+    """
+    Runs experiments with different shading factors.
+
+    Returns one row per shading factor.
+    """
+    if alpha_values is None:
+        alpha_values = [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+
+    Path(output_dir).mkdir(exist_ok=True)
+
+    all_agents = []
+    alpha_by_agent = {}
+    for alpha in alpha_values:
+        agents = make_shading_competition_agents(
+            num_agents=num_agents_per_alpha,
+            alpha=alpha,
+        )
+        all_agents.extend(agents)
+        alpha_by_agent.update({agent.agent_id: alpha for agent in agents})
+
+    config = ExperimentConfig(
+        auction_type=auction_type,
+        num_rounds=num_rounds,
+        low_value=low_value,
+        high_value=high_value,
+        seed=seed,
+        output_dir=output_dir,
+    )
+
+    df, agent_summary, auction_summary = run_experiment(
+        config=config,
+        agents=all_agents,
+    )
+
+    agent_summary = agent_summary.assign(
+        alpha=agent_summary["agent_id"].map(alpha_by_agent)
+    )
+    sweep_df = (
+        agent_summary.groupby("alpha", as_index=False)
+        .agg(
+            total_profit=("total_profit", "sum"),
+            avg_profit=("avg_profit", "mean"),
+            win_rate=("win_rate", "mean"),
+            avg_regret=("avg_regret", "mean"),
+            total_regret=("total_regret", "sum"),
+            avg_profit_when_winner=("avg_profit_when_winner", "mean"),
+        )
+        .sort_values("alpha")
+    )
+    sweep_df.insert(1, "num_agents", num_agents_per_alpha)
+    sweep_df["auction_type"] = auction_type
+    sweep_df["num_rounds"] = num_rounds
+    sweep_df["low_value"] = low_value
+    sweep_df["high_value"] = high_value
+    sweep_df["avg_seller_revenue"] = auction_summary["avg_seller_revenue"]
+    sweep_df["allocative_efficiency"] = auction_summary[
+        "allocative_efficiency"
+    ]
+    sweep_df.to_csv(Path(output_dir) / "strategy_sweep.csv", index=False)
+    plot_strategy_profit(
+        sweep_df,
+        str(Path(output_dir) / "strategy_avg_profit.png"),
+    )
+    plot_strategy_win_rate(
+        sweep_df,
+        str(Path(output_dir) / "strategy_win_rate.png"),
+    )
 
     return sweep_df
