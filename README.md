@@ -1,137 +1,111 @@
 # Auction and Market Strategy Simulator
 
-## Overview
-
-This project is a modular Python simulation framework for studying bidding
-strategies, auction mechanisms, and double-auction markets. It supports
-fixed-rule and adaptive agents, Monte Carlo experiments, economic metrics,
-saved analytics, and an interactive Streamlit dashboard.
-
-## Features
-
-- First-price and second-price sealed-bid auctions
-- Midpoint-price double-auction market clearing
-- Truthful, random, shading, markup, and epsilon-greedy bandit agents
-- Repeated auction and market simulations
-- Competition and head-to-head strategy sweeps
-- Profit, regret, revenue, surplus, volume, and efficiency metrics
-- CSV and chart output
-- Streamlit views for auctions, markets, and learning agents
-- Automated tests for mechanisms, agents, metrics, experiments, and UI logic
+A full-stack simulator for first-price and second-price auctions, double-auction
+markets, and adaptive bidding strategies. The original simulation packages
+remain framework-independent; FastAPI is the application boundary, PostgreSQL
+stores experiment definitions and run outputs, and Streamlit is an HTTP-only
+frontend.
 
 ## Architecture
 
 ```text
-auction_sim/
-  agents.py          Single-item auction agents
-  auctions.py        First-price and second-price mechanisms
-  bandits.py         Reusable epsilon-greedy policy
-  simulation.py      Repeated auction simulation
-  data.py            Auction result DataFrame conversion
-  metrics.py         Auction and bidder analytics
-  experiments.py     Baselines and parameter sweeps
-  learning.py        Bandit comparisons and learning analytics
+auction_sim/          Auction simulation engine (unchanged)
+market_sim/           Double-auction engine (unchanged)
+dashboard_logic.py    Engine orchestration shared by backend services
 
-market_sim/
-  market.py          Double-auction matching and result types
-  market_agents.py   Buyer, seller, and adaptive buyer agents
-  simulation.py      Repeated market simulation
-  data.py            Market result DataFrame conversion
-  metrics.py         Volume, surplus, and efficiency analytics
-  experiments.py     Market scenarios and saved outputs
+backend/app/
+  main.py             FastAPI application and CORS configuration
+  routes.py           Simulation and stored-experiment endpoints
+  schemas.py          Validated API contracts
+  services.py         Engine adapter and run persistence
+  models.py           SQLAlchemy experiment/run models
+  database.py         PostgreSQL session management
+  seed.py             Idempotent pre-made experiment definitions
+
+frontend/
+  api_client.py       Typed boundary between Streamlit and FastAPI
+streamlit_app.py      Presentation-only Streamlit application
+
+migrations/           Alembic schema migrations
+tests/                Engine and application tests
 ```
 
-The auction and market engines are separate because their participants,
-outcomes, and metrics differ. They share validation and adaptive-policy
-components where the contracts genuinely overlap.
+The frontend never imports the simulation engine. Every custom or pre-made run
+travels through FastAPI and is persisted as an `experiment_runs` record.
 
-## Auction Mechanisms
+## Run the full stack
 
-### First Price
+The simplest path starts PostgreSQL, applies migrations, seeds experiments,
+then starts both application processes:
 
-The highest bidder wins and pays their own bid. Bid shading can preserve
-surplus but lowers the probability of winning.
-
-### Second Price
-
-The highest bidder wins and pays the second-highest bid. Truthful bidding is
-the standard theoretical benchmark.
-
-### Double Auction
-
-Buyer bids are sorted from highest to lowest and seller asks from lowest to
-highest. Orders trade while the bid crosses the ask. The transaction price is
-the midpoint:
-
-```text
-price = (buyer_bid + seller_ask) / 2
+```bash
+docker compose up --build
 ```
 
-## Agents
+Open:
 
-- `TruthfulAgent`: bids its private valuation.
-- `RandomAgent`: samples a bid between zero and its valuation.
-- `ShadingAgent`: bids a fixed valuation multiplier.
-- `BanditAgent`: learns a bid multiplier with epsilon-greedy exploration.
-- `TruthfulBuyerAgent`: submits its private value.
-- `ShadingBuyerAgent`: submits a fixed fraction of its private value.
-- `TruthfulSellerAgent`: asks its private cost.
-- `MarkupSellerAgent`: asks its cost plus a fixed markup.
-- `BanditBuyerAgent`: learns a buyer bid multiplier.
+- Streamlit: <http://localhost:8501>
+- API documentation: <http://localhost:8000/docs>
+- Health check: <http://localhost:8000/api/v1/health>
 
-## Metrics
+PostgreSQL data lives in the named `postgres_data` Docker volume.
 
-Auction analytics include profit, win rate, regret, seller revenue, winning
-price, winner valuation, and allocative efficiency.
+## Run services locally
 
-Market analytics include trade volume, transaction price, bid-ask spread,
-buyer surplus, seller surplus, total surplus, unmatched participants, and
-allocative efficiency. Market efficiency is realized surplus divided by the
-maximum feasible surplus from private buyer values and seller costs.
-
-## Run Locally
+Install dependencies and start PostgreSQL:
 
 ```bash
 python3 -m pip install -r requirements.txt
+docker compose up -d db
+cp .env.example .env
+```
+
+Export the values from `.env` in your shell, then prepare the database:
+
+```bash
+alembic upgrade head
+python3 -m scripts.seed_experiments
+```
+
+Run the backend and frontend in separate terminals:
+
+```bash
+make api
+make frontend
+```
+
+Configuration is environment-based:
+
+- `DATABASE_URL`: SQLAlchemy PostgreSQL URL
+- `API_BASE_URL`: FastAPI base URL used by Streamlit
+- `CORS_ORIGINS`: comma-separated browser origins accepted by FastAPI
+
+## API
+
+Custom simulations:
+
+```text
+POST /api/v1/simulations/auctions
+POST /api/v1/simulations/markets
+POST /api/v1/simulations/learning
+```
+
+Stored experiments:
+
+```text
+GET  /api/v1/experiments
+GET  /api/v1/experiments/{slug}
+POST /api/v1/experiments/{slug}/run
+GET  /api/v1/runs/{run_id}
+```
+
+The run endpoint accepts an optional `overrides` object, merging validated
+changes over the stored parameters.
+
+## Test
+
+```bash
 python3 -m pytest
-python3 main.py
-streamlit run streamlit_app.py
 ```
 
-The dashboard defaults to 1,000 rounds and caps each participant side at 16
-agents to keep hosted interactions responsive.
-
-## Example Experiments
-
-```python
-from auction_sim.experiments import (
-    run_competition_sweep,
-    run_strategy_sweep,
-)
-from market_sim.experiments import run_market_scenarios
-
-competition = run_competition_sweep(num_rounds=10_000)
-strategies = run_strategy_sweep(num_rounds=10_000)
-markets = run_market_scenarios(num_rounds=1_000)
-```
-
-These experiments are designed to investigate:
-
-- how bidder competition changes seller revenue and bidder surplus
-- which fixed shading multipliers perform best head-to-head
-- how buyer/seller imbalance changes market volume and prices
-- whether adaptive bandit agents learn profitable bidding multipliers
-
-## Deployment
-
-The app is configured for Streamlit Community Cloud. Deploy this repository
-with `streamlit_app.py` as the entry point after connecting the GitHub
-repository in Streamlit Community Cloud.
-
-## Future Work
-
-- Alternative clearing prices and continuous double auctions
-- Reserve prices, budgets, and inventory constraints
-- Additional valuation and cost distributions
-- Seller-side adaptive agents
-- Market regimes and correlated private information
+The existing engine tests continue to exercise the original application logic.

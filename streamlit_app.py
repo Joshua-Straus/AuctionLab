@@ -2,11 +2,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from dashboard_logic import (
-    run_auction_dashboard,
-    run_learning_dashboard,
-    run_market_dashboard,
-)
+from frontend.api_client import ApiError, SimulatorApiClient
 
 
 st.set_page_config(
@@ -17,17 +13,22 @@ st.set_page_config(
 
 @st.cache_data(show_spinner=False)
 def cached_auction_run(**kwargs):
-    return run_auction_dashboard(**kwargs)
+    return SimulatorApiClient().run_auction(kwargs)
 
 
 @st.cache_data(show_spinner=False)
 def cached_market_run(**kwargs):
-    return run_market_dashboard(**kwargs)
+    return SimulatorApiClient().run_market(kwargs)
 
 
 @st.cache_data(show_spinner=False)
 def cached_learning_run(**kwargs):
-    return run_learning_dashboard(**kwargs)
+    return SimulatorApiClient().run_learning(kwargs)
+
+
+@st.cache_data(ttl=30, show_spinner=False)
+def cached_experiments():
+    return SimulatorApiClient().list_experiments()
 
 
 def metric_row(summary: dict, keys: list[tuple[str, str]]) -> None:
@@ -81,7 +82,7 @@ def auction_view() -> None:
                     high_value=high_value,
                     seed=int(seed),
                 )
-        except ValueError as error:
+        except ApiError as error:
             st.error(str(error))
 
     result = st.session_state.get("auction_result")
@@ -160,7 +161,7 @@ def market_view() -> None:
                     seller_cost_high=seller_range[1],
                     seed=int(seed),
                 )
-        except ValueError as error:
+        except ApiError as error:
             st.error(str(error))
 
     result = st.session_state.get("market_result")
@@ -231,6 +232,30 @@ def learning_view() -> None:
 
 
 st.title("Auction and Market Simulator")
+
+try:
+    experiments = cached_experiments()
+except ApiError as error:
+    experiments = []
+    st.warning(f"FastAPI is unavailable. Start the backend to run simulations. ({error})")
+
+if experiments:
+    with st.expander("Pre-made experiments"):
+        labels = {experiment["name"]: experiment for experiment in experiments}
+        selected_name = st.selectbox("Experiment", list(labels))
+        selected = labels[selected_name]
+        st.caption(selected["description"])
+        if st.button("Run pre-made experiment"):
+            try:
+                with st.spinner("Running stored experiment..."):
+                    result = SimulatorApiClient().run_experiment(
+                        selected["slug"], selected["kind"]
+                    )
+                st.session_state[f"{selected['kind']}_result"] = result
+                st.success("Experiment complete. Open its matching view below.")
+            except ApiError as error:
+                st.error(str(error))
+
 view = st.segmented_control(
     "View",
     ["Auction Simulator", "Market Simulator", "Learning Agents"],
