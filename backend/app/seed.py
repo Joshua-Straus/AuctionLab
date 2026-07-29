@@ -32,37 +32,47 @@ PREMADE_EXPERIMENTS: tuple[dict[str, Any], ...] = (
         },
     },
     {
-        "slug": "balanced-double-auction",
-        "name": "Balanced double auction",
-        "description": "Eight truthful buyers trade with eight truthful sellers.",
-        "kind": ExperimentKind.market,
-        "parameters": {
-            "num_rounds": 1000, "num_buyers": 8, "num_sellers": 8,
-            "buyer_strategy": "truthful", "seller_strategy": "truthful",
-            "buyer_alpha": 0.8, "seller_markup": 0.2,
-            "buyer_value_low": 0.0, "buyer_value_high": 100.0,
-            "seller_cost_low": 0.0, "seller_cost_high": 100.0, "seed": 42,
-        },
-    },
-    {
-        "slug": "strategic-double-auction",
-        "name": "Strategic double auction",
-        "description": "Shading buyers trade with markup sellers.",
-        "kind": ExperimentKind.market,
-        "parameters": {
-            "num_rounds": 1000, "num_buyers": 8, "num_sellers": 8,
-            "buyer_strategy": "shading", "seller_strategy": "markup",
-            "buyer_alpha": 0.8, "seller_markup": 0.2,
-            "buyer_value_low": 0.0, "buyer_value_high": 100.0,
-            "seller_cost_low": 0.0, "seller_cost_high": 100.0, "seed": 42,
-        },
-    },
-    {
         "slug": "bandit-learning",
         "name": "Bandit learning comparison",
         "description": "An epsilon-greedy bidder learns alongside fixed strategies.",
         "kind": ExperimentKind.learning,
         "parameters": {"num_rounds": 1000, "epsilon": 0.1, "seed": 42},
+    },
+    {
+        "slug": "vickrey-dominant-strategy-test",
+        "name": "Vickrey dominant-strategy test",
+        "description": (
+            "Tests whether truthful bidding weakly dominates shading and "
+            "adaptive bandit bidding in a second-price auction."
+        ),
+        "kind": ExperimentKind.vickrey,
+        "parameters": {
+            "num_rounds": 5000,
+            "agents_per_strategy": 3,
+            "shading_alpha": 0.8,
+            "epsilon": 0.1,
+            "low_value": 0.0,
+            "high_value": 100.0,
+            "seed": 42,
+        },
+    },
+    {
+        "slug": "sealed-bid-first-price-strategy-test",
+        "name": "Sealed-bid first-price strategy test",
+        "description": (
+            "Compares average profit for truthful, random, shading, bandit, "
+            "and equilibrium first-price bidders."
+        ),
+        "kind": ExperimentKind.first_price,
+        "parameters": {
+            "num_rounds": 5000,
+            "agents_per_strategy": 3,
+            "shading_alpha": 0.8,
+            "epsilon": 0.1,
+            "low_value": 0.0,
+            "high_value": 100.0,
+            "seed": 42,
+        },
     },
 )
 

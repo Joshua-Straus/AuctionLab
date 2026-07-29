@@ -13,8 +13,9 @@ from backend.app.database import Base
 
 class ExperimentKind(str, enum.Enum):
     auction = "auction"
-    market = "market"
+    first_price = "first_price"
     learning = "learning"
+    vickrey = "vickrey"
 
 
 class RunStatus(str, enum.Enum):
@@ -29,7 +30,16 @@ class Experiment(Base):
     slug: Mapped[str] = mapped_column(String(100), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(200))
     description: Mapped[str] = mapped_column(Text, default="")
-    kind: Mapped[ExperimentKind] = mapped_column(Enum(ExperimentKind, native_enum=False))
+    kind: Mapped[ExperimentKind] = mapped_column(
+        Enum(
+            ExperimentKind,
+            native_enum=False,
+            length=32,
+            values_callable=lambda enum_class: [
+                member.value for member in enum_class
+            ],
+        )
+    )
     parameters: Mapped[dict[str, Any]] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.current_timestamp()
@@ -51,7 +61,16 @@ class ExperimentRun(Base):
     experiment_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("experiments.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    kind: Mapped[ExperimentKind] = mapped_column(Enum(ExperimentKind, native_enum=False))
+    kind: Mapped[ExperimentKind] = mapped_column(
+        Enum(
+            ExperimentKind,
+            native_enum=False,
+            length=32,
+            values_callable=lambda enum_class: [
+                member.value for member in enum_class
+            ],
+        )
+    )
     status: Mapped[RunStatus] = mapped_column(Enum(RunStatus, native_enum=False))
     parameters: Mapped[dict[str, Any]] = mapped_column(JSON)
     summary: Mapped[dict[str, Any]] = mapped_column(JSON)

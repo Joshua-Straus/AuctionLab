@@ -46,11 +46,13 @@ class SimulatorApiClient:
             "results": pd.DataFrame(payload["results"]),
             "agent_summary": pd.DataFrame(payload["agent_summary"]),
         }
-        if kind == "auction" or kind == "learning":
-            result["auction_summary"] = payload["summary"]
-        else:
-            result["market_summary"] = payload["summary"]
-        for key in ("cumulative_profit", "action_summary", "action_history"):
+        result["auction_summary"] = payload["summary"]
+        for key in (
+            "cumulative_profit",
+            "action_summary",
+            "action_history",
+            "strategy_summary",
+        ):
             if payload.get(key) is not None:
                 result[key] = pd.DataFrame(payload[key])
         return result
@@ -59,13 +61,21 @@ class SimulatorApiClient:
         payload = self._request("POST", "/simulations/auctions", parameters)
         return self._as_dashboard_result(payload, "auction")
 
-    def run_market(self, parameters: dict[str, Any]) -> dict[str, Any]:
-        payload = self._request("POST", "/simulations/markets", parameters)
-        return self._as_dashboard_result(payload, "market")
-
     def run_learning(self, parameters: dict[str, Any]) -> dict[str, Any]:
         payload = self._request("POST", "/simulations/learning", parameters)
         return self._as_dashboard_result(payload, "learning")
+
+    def run_vickrey(self, parameters: dict[str, Any]) -> dict[str, Any]:
+        payload = self._request("POST", "/simulations/vickrey", parameters)
+        return self._as_dashboard_result(payload, "vickrey")
+
+    def run_first_price_strategies(
+        self, parameters: dict[str, Any]
+    ) -> dict[str, Any]:
+        payload = self._request(
+            "POST", "/simulations/first-price-strategies", parameters
+        )
+        return self._as_dashboard_result(payload, "first_price")
 
     def list_experiments(self) -> list[dict[str, Any]]:
         return self._request("GET", "/experiments")

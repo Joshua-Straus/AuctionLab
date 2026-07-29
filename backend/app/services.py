@@ -7,11 +7,17 @@ from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 
 from backend.app.models import Experiment, ExperimentKind, ExperimentRun, RunStatus
-from backend.app.schemas import AuctionRunRequest, LearningRunRequest, MarketRunRequest
+from backend.app.schemas import (
+    AuctionRunRequest,
+    FirstPriceStrategyRunRequest,
+    LearningRunRequest,
+    VickreyRunRequest,
+)
+from auction_sim.first_price_research import run_first_price_strategy_experiment
+from auction_sim.vickrey import run_vickrey_dominance_experiment
 from dashboard_logic import (
     run_auction_dashboard,
     run_learning_dashboard,
-    run_market_dashboard,
 )
 
 
@@ -28,13 +34,25 @@ def execute(kind: ExperimentKind, parameters: dict[str, Any]) -> dict[str, Any]:
             "agent_summary": _records(raw["agent_summary"]),
             "summary": raw["auction_summary"],
         })
-    if kind == ExperimentKind.market:
-        request = MarketRunRequest.model_validate(parameters)
-        raw = run_market_dashboard(**request.model_dump())
+    if kind == ExperimentKind.vickrey:
+        request = VickreyRunRequest.model_validate(parameters)
+        raw = run_vickrey_dominance_experiment(**request.model_dump())
         return jsonable_encoder({
             "results": _records(raw["results"]),
             "agent_summary": _records(raw["agent_summary"]),
-            "summary": raw["market_summary"],
+            "strategy_summary": _records(raw["strategy_summary"]),
+            "summary": raw["auction_summary"],
+            "proposition": raw["proposition"],
+        })
+    if kind == ExperimentKind.first_price:
+        request = FirstPriceStrategyRunRequest.model_validate(parameters)
+        raw = run_first_price_strategy_experiment(**request.model_dump())
+        return jsonable_encoder({
+            "results": _records(raw["results"]),
+            "agent_summary": _records(raw["agent_summary"]),
+            "strategy_summary": _records(raw["strategy_summary"]),
+            "summary": raw["auction_summary"],
+            "comparison": raw["comparison"],
         })
     request = LearningRunRequest.model_validate(parameters)
     raw = run_learning_dashboard(**request.model_dump())

@@ -41,6 +41,7 @@ class Simulation:
                     context={
                         "round_id": round_id,
                         "auction_type": self.auction.auction_type,
+                        "num_agents": len(self.agents),
                     },
                 )
                 valuations[agent.agent_id] = valuation

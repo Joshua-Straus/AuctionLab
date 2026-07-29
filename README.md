@@ -1,17 +1,31 @@
-# Auction and Market Strategy Simulator
+# Auction Strategy Research Simulator
 
-A full-stack simulator for first-price and second-price auctions, double-auction
-markets, and adaptive bidding strategies. The original simulation packages
-remain framework-independent; FastAPI is the application boundary, PostgreSQL
-stores experiment definitions and run outputs, and Streamlit is an HTTP-only
-frontend.
+A full-stack research application for studying bidding behavior in first-price
+and second-price sealed-bid auctions. It supports truthful, shaded, random, and
+epsilon-greedy strategies; Monte Carlo experiments; competition and strategy
+sweeps; economic metrics; and persisted reproducible experiments.
+
+The simulation engine remains framework-independent. FastAPI is the application
+boundary, PostgreSQL stores experiment definitions and run outputs, and
+Streamlit is an HTTP-only frontend.
+
+## Research capabilities
+
+- First-price and second-price sealed-bid mechanisms
+- Truthful, random, fixed-shading, adaptive bandit, and equilibrium bidders
+- Configurable bidder counts and private-value distributions
+- Seller revenue, bidder profit, regret, win rate, and allocative efficiency
+- Competition and head-to-head strategy sweeps
+- Fixed-strategy versus adaptive-agent learning comparisons
+- Dedicated Vickrey weak-dominance experiment comparing expected profit
+- Dedicated first-price experiment comparing every available bidder type
+- Reproducible stored experiments with parameter overrides
 
 ## Architecture
 
 ```text
-auction_sim/          Auction simulation engine (unchanged)
-market_sim/           Double-auction engine (unchanged)
-dashboard_logic.py    Engine orchestration shared by backend services
+auction_sim/          Framework-independent auction engine and analytics
+dashboard_logic.py    Auction experiment orchestration
 
 backend/app/
   main.py             FastAPI application and CORS configuration
@@ -20,23 +34,20 @@ backend/app/
   services.py         Engine adapter and run persistence
   models.py           SQLAlchemy experiment/run models
   database.py         PostgreSQL session management
-  seed.py             Idempotent pre-made experiment definitions
+  seed.py             Idempotent research experiment definitions
 
 frontend/
-  api_client.py       Typed boundary between Streamlit and FastAPI
+  api_client.py       Streamlit-to-FastAPI boundary
 streamlit_app.py      Presentation-only Streamlit application
 
 migrations/           Alembic schema migrations
-tests/                Engine and application tests
+tests/                Auction engine and application tests
 ```
 
 The frontend never imports the simulation engine. Every custom or pre-made run
 travels through FastAPI and is persisted as an `experiment_runs` record.
 
 ## Run the full stack
-
-The simplest path starts PostgreSQL, applies migrations, seeds experiments,
-then starts both application processes:
 
 ```bash
 docker compose up --build
@@ -52,29 +63,23 @@ PostgreSQL data lives in the named `postgres_data` Docker volume.
 
 ## Run services locally
 
-Install dependencies and start PostgreSQL:
-
 ```bash
 python3 -m pip install -r requirements.txt
 docker compose up -d db
 cp .env.example .env
 ```
 
-Export the values from `.env` in your shell, then prepare the database:
+Export the values from `.env`, prepare the database, then run the services in
+separate terminals:
 
 ```bash
 alembic upgrade head
 python3 -m scripts.seed_experiments
-```
-
-Run the backend and frontend in separate terminals:
-
-```bash
 make api
 make frontend
 ```
 
-Configuration is environment-based:
+Configuration:
 
 - `DATABASE_URL`: SQLAlchemy PostgreSQL URL
 - `API_BASE_URL`: FastAPI base URL used by Streamlit
@@ -82,30 +87,23 @@ Configuration is environment-based:
 
 ## API
 
-Custom simulations:
-
 ```text
 POST /api/v1/simulations/auctions
-POST /api/v1/simulations/markets
 POST /api/v1/simulations/learning
-```
+POST /api/v1/simulations/vickrey
+POST /api/v1/simulations/first-price-strategies
 
-Stored experiments:
-
-```text
 GET  /api/v1/experiments
 GET  /api/v1/experiments/{slug}
 POST /api/v1/experiments/{slug}/run
 GET  /api/v1/runs/{run_id}
 ```
 
-The run endpoint accepts an optional `overrides` object, merging validated
-changes over the stored parameters.
+The stored-experiment run endpoint accepts an optional `overrides` object and
+merges validated changes over the saved parameters.
 
 ## Test
 
 ```bash
 python3 -m pytest
 ```
-
-The existing engine tests continue to exercise the original application logic.

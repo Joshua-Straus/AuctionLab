@@ -24,33 +24,42 @@ class AuctionRunRequest(BaseModel):
         return self
 
 
-class MarketRunRequest(BaseModel):
-    num_rounds: int = Field(1000, gt=0, le=20_000)
-    num_buyers: int = Field(8, ge=1, le=16)
-    num_sellers: int = Field(8, ge=1, le=16)
-    buyer_strategy: Literal["truthful", "shading", "bandit"] = "truthful"
-    seller_strategy: Literal["truthful", "markup"] = "truthful"
-    buyer_alpha: float = Field(0.8, ge=0)
-    seller_markup: float = Field(0.2, ge=0)
-    buyer_value_low: float = 0.0
-    buyer_value_high: float = 100.0
-    seller_cost_low: float = 0.0
-    seller_cost_high: float = 100.0
-    seed: int = 42
-
-    @model_validator(mode="after")
-    def validate_ranges(self):
-        if self.buyer_value_low > self.buyer_value_high:
-            raise ValueError("buyer_value_low must not exceed buyer_value_high")
-        if self.seller_cost_low > self.seller_cost_high:
-            raise ValueError("seller_cost_low must not exceed seller_cost_high")
-        return self
-
-
 class LearningRunRequest(BaseModel):
     num_rounds: int = Field(1000, gt=0, le=20_000)
     epsilon: float = Field(0.1, ge=0, le=1)
     seed: int = 42
+
+
+class VickreyRunRequest(BaseModel):
+    num_rounds: int = Field(5000, gt=0, le=20_000)
+    agents_per_strategy: int = Field(3, ge=1, le=5)
+    shading_alpha: float = Field(0.8, ge=0, le=1.2)
+    epsilon: float = Field(0.1, ge=0, le=1)
+    low_value: float = 0.0
+    high_value: float = 100.0
+    seed: int = 42
+
+    @model_validator(mode="after")
+    def validate_range(self):
+        if self.low_value > self.high_value:
+            raise ValueError("low_value must not exceed high_value")
+        return self
+
+
+class FirstPriceStrategyRunRequest(BaseModel):
+    num_rounds: int = Field(5000, gt=0, le=20_000)
+    agents_per_strategy: int = Field(3, ge=1, le=3)
+    shading_alpha: float = Field(0.8, ge=0, le=1.2)
+    epsilon: float = Field(0.1, ge=0, le=1)
+    low_value: float = 0.0
+    high_value: float = 100.0
+    seed: int = 42
+
+    @model_validator(mode="after")
+    def validate_range(self):
+        if self.low_value > self.high_value:
+            raise ValueError("low_value must not exceed high_value")
+        return self
 
 
 class SimulationResponse(BaseModel):
@@ -61,6 +70,9 @@ class SimulationResponse(BaseModel):
     cumulative_profit: list[dict[str, Any]] | None = None
     action_summary: list[dict[str, Any]] | None = None
     action_history: list[dict[str, Any]] | None = None
+    strategy_summary: list[dict[str, Any]] | None = None
+    proposition: dict[str, Any] | None = None
+    comparison: dict[str, Any] | None = None
 
 
 class ExperimentResponse(BaseModel):

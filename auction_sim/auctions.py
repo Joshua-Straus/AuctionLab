@@ -9,7 +9,6 @@ import heapq
 from dataclasses import dataclass
 
 from auction_sim.results import AuctionResult
-from market_sim.market import DoubleAuction, MarketResult, Trade
 
 @dataclass
 class Auction:

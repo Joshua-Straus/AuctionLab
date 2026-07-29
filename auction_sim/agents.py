@@ -78,6 +78,22 @@ class ShadingAgent(Agent):
 
 
 @dataclass
+class EquilibriumFirstPriceAgent(Agent):
+    """Symmetric equilibrium bidder for uniform private values."""
+
+    def bid(self, value: float, context: dict | None = None) -> float:
+        validate_value(value)
+        if context is None or "num_agents" not in context:
+            raise ValueError(
+                "EquilibriumFirstPriceAgent requires num_agents in context."
+            )
+        num_agents = int(context["num_agents"])
+        if num_agents <= 0:
+            raise ValueError("num_agents must be positive.")
+        return ((num_agents - 1) / num_agents) * value
+
+
+@dataclass
 class BanditAgent(Agent):
     actions: list[float] = field(
         default_factory=lambda: [0.5, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 1.0]

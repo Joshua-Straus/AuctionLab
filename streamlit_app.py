@@ -6,7 +6,7 @@ from frontend.api_client import ApiError, SimulatorApiClient
 
 
 st.set_page_config(
-    page_title="Auction and Market Simulator",
+    page_title="Auction Strategy Research",
     layout="wide",
 )
 
@@ -17,13 +17,18 @@ def cached_auction_run(**kwargs):
 
 
 @st.cache_data(show_spinner=False)
-def cached_market_run(**kwargs):
-    return SimulatorApiClient().run_market(kwargs)
+def cached_learning_run(**kwargs):
+    return SimulatorApiClient().run_learning(kwargs)
 
 
 @st.cache_data(show_spinner=False)
-def cached_learning_run(**kwargs):
-    return SimulatorApiClient().run_learning(kwargs)
+def cached_vickrey_run(**kwargs):
+    return SimulatorApiClient().run_vickrey(kwargs)
+
+
+@st.cache_data(show_spinner=False)
+def cached_first_price_strategy_run(**kwargs):
+    return SimulatorApiClient().run_first_price_strategies(kwargs)
 
 
 @st.cache_data(ttl=30, show_spinner=False)
@@ -105,89 +110,6 @@ def auction_view() -> None:
         right.bar_chart(chart_data["win_rate"])
 
 
-def market_view() -> None:
-    with st.sidebar:
-        st.subheader("Market controls")
-        num_rounds = st.number_input(
-            "Market rounds",
-            min_value=10,
-            max_value=20_000,
-            value=1_000,
-            step=100,
-        )
-        num_buyers = st.slider("Buyers", 1, 16, 8)
-        num_sellers = st.slider("Sellers", 1, 16, 8)
-        buyer_strategy = st.selectbox(
-            "Buyer strategy",
-            ["truthful", "shading", "bandit"],
-        )
-        seller_strategy = st.selectbox(
-            "Seller strategy",
-            ["truthful", "markup"],
-        )
-        buyer_alpha = st.slider("Buyer multiplier", 0.1, 1.2, 0.8, 0.05)
-        seller_markup = st.slider("Seller markup", 0.0, 1.0, 0.2, 0.05)
-        buyer_range = st.slider(
-            "Buyer value range",
-            0.0,
-            200.0,
-            (0.0, 100.0),
-            5.0,
-        )
-        seller_range = st.slider(
-            "Seller cost range",
-            0.0,
-            200.0,
-            (0.0, 100.0),
-            5.0,
-        )
-        seed = st.number_input("Market seed", value=42, step=1)
-        run = st.button("Run market", type="primary")
-
-    if run:
-        try:
-            with st.spinner("Running market simulation..."):
-                st.session_state["market_result"] = cached_market_run(
-                    num_rounds=int(num_rounds),
-                    num_buyers=num_buyers,
-                    num_sellers=num_sellers,
-                    buyer_strategy=buyer_strategy,
-                    seller_strategy=seller_strategy,
-                    buyer_alpha=buyer_alpha,
-                    seller_markup=seller_markup,
-                    buyer_value_low=buyer_range[0],
-                    buyer_value_high=buyer_range[1],
-                    seller_cost_low=seller_range[0],
-                    seller_cost_high=seller_range[1],
-                    seed=int(seed),
-                )
-        except ApiError as error:
-            st.error(str(error))
-
-    result = st.session_state.get("market_result")
-    if result:
-        summary = result["market_summary"]
-        metric_row(
-            summary,
-            [
-                ("avg_trade_volume", "Avg volume"),
-                ("avg_transaction_price", "Avg price"),
-                ("avg_total_surplus", "Avg surplus"),
-                ("allocative_efficiency", "Efficiency"),
-            ],
-        )
-        st.subheader("Market leaderboard")
-        st.dataframe(result["agent_summary"], use_container_width=True)
-        round_data = result["results"].drop_duplicates("round_id")
-        left, right = st.columns(2)
-        left.line_chart(
-            round_data.set_index("round_id")["trade_volume"],
-        )
-        right.line_chart(
-            round_data.set_index("round_id")["avg_transaction_price"],
-        )
-
-
 def learning_view() -> None:
     with st.sidebar:
         st.subheader("Learning controls")
@@ -231,7 +153,174 @@ def learning_view() -> None:
         )
 
 
-st.title("Auction and Market Simulator")
+def vickrey_view() -> None:
+    st.subheader("Vickrey (Second Price) Auction Test")
+    st.markdown(
+        "Tests the proposition: **“Bidding your valuation is a weakly-dominant "
+        "strategy in a second-price auction.”** Truthful, fixed-shading, and "
+        "adaptive bandit bidders compete in the same repeated auctions."
+    )
+    with st.sidebar:
+        st.subheader("Vickrey test controls")
+        num_rounds = st.number_input(
+            "Vickrey rounds",
+            min_value=100,
+            max_value=20_000,
+            value=5_000,
+            step=500,
+        )
+        agents_per_strategy = st.slider("Agents per strategy", 1, 5, 3)
+        shading_alpha = st.slider(
+            "Vickrey shading multiplier", 0.1, 1.0, 0.8, 0.05
+        )
+        epsilon = st.slider(
+            "Vickrey bandit exploration", 0.0, 1.0, 0.1, 0.05
+        )
+        value_range = st.slider(
+            "Vickrey valuation range",
+            0.0,
+            200.0,
+            (0.0, 100.0),
+            5.0,
+        )
+        seed = st.number_input("Vickrey seed", value=42, step=1)
+        run = st.button("Run Vickrey test", type="primary")
+
+    if run:
+        try:
+            with st.spinner("Testing truthful bidding in a Vickrey auction..."):
+                st.session_state["vickrey_result"] = cached_vickrey_run(
+                    num_rounds=int(num_rounds),
+                    agents_per_strategy=agents_per_strategy,
+                    shading_alpha=shading_alpha,
+                    epsilon=epsilon,
+                    low_value=value_range[0],
+                    high_value=value_range[1],
+                    seed=int(seed),
+                )
+        except ApiError as error:
+            st.error(str(error))
+
+    result = st.session_state.get("vickrey_result")
+    if not result:
+        st.info("Run the experiment to compare expected profit by bidding strategy.")
+        return
+
+    proposition = result["proposition"]
+    metric_row(
+        proposition,
+        [
+            ("truthful_expected_profit", "Truthful expected profit"),
+            ("shading_expected_profit", "Shading expected profit"),
+            ("bandit_expected_profit", "Bandit expected profit"),
+        ],
+    )
+    if proposition["supports_proposition"]:
+        st.success(proposition["interpretation"])
+    else:
+        st.warning(proposition["interpretation"])
+    st.caption(
+        "Expected profit is mean profit per bidder per auction. This Monte Carlo "
+        "result illustrates the theoretical proposition but does not replace its proof."
+    )
+
+    strategy_summary = result["strategy_summary"]
+    left, right = st.columns(2)
+    left.subheader("Expected profit by strategy")
+    left.bar_chart(strategy_summary.set_index("strategy")["expected_profit"])
+    right.subheader("Average bid/value ratio")
+    right.bar_chart(strategy_summary.set_index("strategy")["avg_bid_to_value"])
+    st.subheader("Strategy comparison")
+    st.dataframe(strategy_summary, use_container_width=True, hide_index=True)
+    with st.expander("Agent-level results"):
+        st.dataframe(result["agent_summary"], use_container_width=True, hide_index=True)
+
+
+def first_price_strategy_view() -> None:
+    st.subheader("Sealed Bid (First-Price) Auction")
+    st.markdown(
+        "Answers the question: **Which agent type makes the most profit on "
+        "average?** Equal cohorts of truthful, random, fixed-shading, adaptive "
+        "bandit, and equilibrium bidders compete in repeated first-price auctions."
+    )
+    with st.sidebar:
+        st.subheader("First-price test controls")
+        num_rounds = st.number_input(
+            "First-price test rounds",
+            min_value=100,
+            max_value=20_000,
+            value=5_000,
+            step=500,
+        )
+        agents_per_strategy = st.slider(
+            "First-price agents per strategy", 1, 3, 3
+        )
+        shading_alpha = st.slider(
+            "First-price shading multiplier", 0.1, 1.0, 0.8, 0.05
+        )
+        epsilon = st.slider(
+            "First-price bandit exploration", 0.0, 1.0, 0.1, 0.05
+        )
+        value_range = st.slider(
+            "First-price valuation range",
+            0.0,
+            200.0,
+            (0.0, 100.0),
+            5.0,
+        )
+        seed = st.number_input("First-price test seed", value=42, step=1)
+        run = st.button("Run first-price test", type="primary")
+
+    if run:
+        try:
+            with st.spinner("Comparing all first-price bidding strategies..."):
+                st.session_state[
+                    "first_price_result"
+                ] = cached_first_price_strategy_run(
+                    num_rounds=int(num_rounds),
+                    agents_per_strategy=agents_per_strategy,
+                    shading_alpha=shading_alpha,
+                    epsilon=epsilon,
+                    low_value=value_range[0],
+                    high_value=value_range[1],
+                    seed=int(seed),
+                )
+        except ApiError as error:
+            st.error(str(error))
+
+    result = st.session_state.get("first_price_result")
+    if not result:
+        st.info("Run the experiment to compare average profit by agent type.")
+        return
+
+    comparison = result["comparison"]
+    st.success(comparison["interpretation"])
+    metric_row(
+        comparison,
+        [
+            ("highest_expected_profit", "Highest expected profit"),
+            ("equilibrium_bid_multiplier", "Equilibrium bid multiplier"),
+            ("total_agents", "Total bidders"),
+        ],
+    )
+    st.caption(
+        "Expected profit is mean profit per bidder per auction. The equilibrium "
+        "agent bids b(v) = [(n−1)/n]v using the displayed total bidder count."
+    )
+
+    strategy_summary = result["strategy_summary"]
+    left, right = st.columns(2)
+    left.subheader("Expected profit by agent type")
+    left.bar_chart(strategy_summary.set_index("strategy")["expected_profit"])
+    right.subheader("Average bid/value ratio")
+    right.bar_chart(strategy_summary.set_index("strategy")["avg_bid_to_value"])
+    st.subheader("Strategy comparison")
+    st.dataframe(strategy_summary, use_container_width=True, hide_index=True)
+    with st.expander("Agent-level results"):
+        st.dataframe(result["agent_summary"], use_container_width=True, hide_index=True)
+
+
+st.title("Auction Strategy Research")
 
 try:
     experiments = cached_experiments()
@@ -258,13 +347,20 @@ if experiments:
 
 view = st.segmented_control(
     "View",
-    ["Auction Simulator", "Market Simulator", "Learning Agents"],
+    [
+        "Auction Simulator",
+        "Sealed Bid (First-Price) Auction",
+        "Vickrey (Second Price) Auction Test",
+        "Learning Agents",
+    ],
     default="Auction Simulator",
 )
 
 if view == "Auction Simulator":
     auction_view()
-elif view == "Market Simulator":
-    market_view()
+elif view == "Sealed Bid (First-Price) Auction":
+    first_price_strategy_view()
+elif view == "Vickrey (Second Price) Auction Test":
+    vickrey_view()
 else:
     learning_view()

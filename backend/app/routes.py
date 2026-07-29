@@ -14,9 +14,10 @@ from backend.app.schemas import (
     ExperimentResponse,
     ExperimentRunRequest,
     ExperimentRunResponse,
+    FirstPriceStrategyRunRequest,
     LearningRunRequest,
-    MarketRunRequest,
     SimulationResponse,
+    VickreyRunRequest,
 )
 from backend.app.services import execute_and_store
 
@@ -33,14 +34,25 @@ def run_auction(request: AuctionRunRequest, db: Session = Depends(get_db)):
     return execute_and_store(db, ExperimentKind.auction, request.model_dump())
 
 
-@router.post("/simulations/markets", response_model=SimulationResponse)
-def run_market(request: MarketRunRequest, db: Session = Depends(get_db)):
-    return execute_and_store(db, ExperimentKind.market, request.model_dump())
-
-
 @router.post("/simulations/learning", response_model=SimulationResponse)
 def run_learning(request: LearningRunRequest, db: Session = Depends(get_db)):
     return execute_and_store(db, ExperimentKind.learning, request.model_dump())
+
+
+@router.post("/simulations/vickrey", response_model=SimulationResponse)
+def run_vickrey(request: VickreyRunRequest, db: Session = Depends(get_db)):
+    return execute_and_store(db, ExperimentKind.vickrey, request.model_dump())
+
+
+@router.post(
+    "/simulations/first-price-strategies",
+    response_model=SimulationResponse,
+)
+def run_first_price_strategies(
+    request: FirstPriceStrategyRunRequest,
+    db: Session = Depends(get_db),
+):
+    return execute_and_store(db, ExperimentKind.first_price, request.model_dump())
 
 
 @router.get("/experiments", response_model=list[ExperimentResponse])

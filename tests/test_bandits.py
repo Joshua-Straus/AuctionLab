@@ -3,7 +3,6 @@ import pytest
 from auction_sim.agents import BanditAgent
 from auction_sim.bandits import EpsilonGreedyPolicy
 from auction_sim.learning import run_bandit_comparison
-from market_sim.market_agents import BanditBuyerAgent
 
 
 def test_policy_rejects_invalid_configuration():
@@ -38,18 +37,6 @@ def test_bandit_agent_bids_valid_action_and_updates():
     assert agent.bid(100.0) == 50.0
     agent.update({"profit": 10.0})
     assert agent.action_avg_rewards[0.5] == 10.0
-
-
-def test_bandit_buyer_uses_zero_reward_when_unmatched():
-    agent = BanditBuyerAgent(
-        agent_id="buyer",
-        actions=[0.8],
-        epsilon=0.0,
-    )
-
-    assert agent.bid(100.0) == 80.0
-    agent.update({"traded": False, "profit": 0.0})
-    assert agent.policy.action_avg_rewards[0.8] == 0.0
 
 
 def test_bandit_comparison_returns_learning_analytics():

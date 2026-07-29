@@ -18,7 +18,7 @@ def upgrade() -> None:
         sa.Column("description", sa.Text(), nullable=False),
         sa.Column(
             "kind",
-            sa.Enum("auction", "market", "learning", name="experimentkind", native_enum=False),
+            sa.Enum("auction", "first_price", "learning", "vickrey", name="experimentkind", native_enum=False),
             nullable=False,
         ),
         sa.Column("parameters", sa.JSON(), nullable=False),
@@ -34,7 +34,7 @@ def upgrade() -> None:
         sa.Column("experiment_id", sa.Uuid(), nullable=True),
         sa.Column(
             "kind",
-            sa.Enum("auction", "market", "learning", name="experimentkind", native_enum=False),
+            sa.Enum("auction", "first_price", "learning", "vickrey", name="experimentkind", native_enum=False),
             nullable=False,
         ),
         sa.Column(

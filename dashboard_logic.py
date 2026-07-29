@@ -8,7 +8,6 @@ from auction_sim.agents import (
 from auction_sim.config import ExperimentConfig
 from auction_sim.experiments import run_experiment
 from auction_sim.learning import run_bandit_comparison
-from market_sim.experiments import make_market_agents, run_market_experiment
 
 
 def _validate_participant_count(count: int, label: str) -> None:
@@ -88,48 +87,6 @@ def run_auction_dashboard(
         "results": results,
         "agent_summary": agents_summary,
         "auction_summary": auction_summary,
-    }
-
-
-def run_market_dashboard(
-    num_rounds: int,
-    num_buyers: int,
-    num_sellers: int,
-    buyer_strategy: str,
-    seller_strategy: str,
-    buyer_alpha: float,
-    seller_markup: float,
-    buyer_value_low: float,
-    buyer_value_high: float,
-    seller_cost_low: float,
-    seller_cost_high: float,
-    seed: int,
-) -> dict:
-    _validate_participant_count(num_buyers, "Buyer count")
-    _validate_participant_count(num_sellers, "Seller count")
-    buyers, sellers = make_market_agents(
-        num_buyers=num_buyers,
-        num_sellers=num_sellers,
-        buyer_strategy=buyer_strategy,
-        seller_strategy=seller_strategy,
-        buyer_alpha=buyer_alpha,
-        seller_markup=seller_markup,
-        seed=seed,
-    )
-    results, agents_summary, market_summary = run_market_experiment(
-        buyers=buyers,
-        sellers=sellers,
-        num_rounds=num_rounds,
-        buyer_value_low=buyer_value_low,
-        buyer_value_high=buyer_value_high,
-        seller_cost_low=seller_cost_low,
-        seller_cost_high=seller_cost_high,
-        seed=seed,
-    )
-    return {
-        "results": results,
-        "agent_summary": agents_summary,
-        "market_summary": market_summary,
     }
 
 
