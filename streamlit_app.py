@@ -31,6 +31,11 @@ def cached_first_price_strategy_run(**kwargs):
     return SimulatorApiClient().run_first_price_strategies(kwargs)
 
 
+@st.cache_data(show_spinner=False)
+def cached_revenue_equality_run(**kwargs):
+    return SimulatorApiClient().run_revenue_equality(kwargs)
+
+
 @st.cache_data(ttl=30, show_spinner=False)
 def cached_experiments():
     return SimulatorApiClient().list_experiments()
@@ -320,6 +325,91 @@ def first_price_strategy_view() -> None:
         st.dataframe(result["agent_summary"], use_container_width=True, hide_index=True)
 
 
+def revenue_equality_view() -> None:
+    st.subheader("Revenue Equality")
+    st.markdown(
+        "Tests whether a first-price auction with equilibrium bidders and a "
+        "second-price auction with truthful bidders produce the same expected "
+        "seller revenue under identical I.I.D. private values."
+    )
+    with st.sidebar:
+        st.subheader("Revenue equality controls")
+        num_rounds = st.number_input(
+            "Revenue equality trials",
+            min_value=100,
+            max_value=20_000,
+            value=10_000,
+            step=1_000,
+        )
+        bidder_count = st.slider("I.I.D. bidders per auction", 2, 64, 16)
+        value_range = st.slider(
+            "Revenue equality valuation range",
+            0.0,
+            200.0,
+            (0.0, 100.0),
+            5.0,
+        )
+        seed = st.number_input("Revenue equality seed", value=42, step=1)
+        run = st.button("Run revenue equality test", type="primary")
+
+    if run:
+        try:
+            with st.spinner("Running paired first- and second-price trials..."):
+                st.session_state[
+                    "revenue_equality_result"
+                ] = cached_revenue_equality_run(
+                    num_rounds=int(num_rounds),
+                    bidder_count=bidder_count,
+                    low_value=value_range[0],
+                    high_value=value_range[1],
+                    seed=int(seed),
+                )
+        except ApiError as error:
+            st.error(str(error))
+
+    result = st.session_state.get("revenue_equality_result")
+    if not result:
+        st.info("Run the experiment to compare seller revenue by auction format.")
+        return
+
+    comparison = result["comparison"]
+    metric_row(
+        comparison,
+        [
+            ("first_price_average_revenue", "First-price avg revenue"),
+            ("second_price_average_revenue", "Second-price avg revenue"),
+            ("average_revenue_difference", "Average difference"),
+        ],
+    )
+    if comparison["consistent_with_revenue_equality"]:
+        st.success(comparison["interpretation"])
+    else:
+        st.warning(comparison["interpretation"])
+    st.caption(
+        "Difference is first-price minus second-price revenue. The test uses a "
+        "paired 95% confidence interval and records seller revenue for every trial."
+    )
+
+    format_summary = result["format_summary"]
+    revenue_by_trial = result["revenue_by_trial"]
+    left, right = st.columns(2)
+    left.subheader("Average seller revenue")
+    left.bar_chart(
+        format_summary.set_index("auction_format")["average_seller_revenue"]
+    )
+    right.subheader("Running average revenue")
+    revenue_pivot = revenue_by_trial.pivot(
+        index="round_id",
+        columns="auction_format",
+        values="seller_revenue",
+    )
+    right.line_chart(revenue_pivot.expanding().mean())
+    st.subheader("Auction-format summary")
+    st.dataframe(format_summary, use_container_width=True, hide_index=True)
+    with st.expander("Trial-level seller revenue"):
+        st.dataframe(revenue_by_trial, use_container_width=True, hide_index=True)
+
+
 st.title("Auction Strategy Research")
 
 try:
@@ -351,6 +441,7 @@ view = st.segmented_control(
         "Auction Simulator",
         "Sealed Bid (First-Price) Auction",
         "Vickrey (Second Price) Auction Test",
+        "Revenue Equality",
         "Learning Agents",
     ],
     default="Auction Simulator",
@@ -362,5 +453,7 @@ elif view == "Sealed Bid (First-Price) Auction":
     first_price_strategy_view()
 elif view == "Vickrey (Second Price) Auction Test":
     vickrey_view()
+elif view == "Revenue Equality":
+    revenue_equality_view()
 else:
     learning_view()

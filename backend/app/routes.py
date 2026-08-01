@@ -16,6 +16,7 @@ from backend.app.schemas import (
     ExperimentRunResponse,
     FirstPriceStrategyRunRequest,
     LearningRunRequest,
+    RevenueEqualityRunRequest,
     SimulationResponse,
     VickreyRunRequest,
 )
@@ -53,6 +54,18 @@ def run_first_price_strategies(
     db: Session = Depends(get_db),
 ):
     return execute_and_store(db, ExperimentKind.first_price, request.model_dump())
+
+
+@router.post("/simulations/revenue-equality", response_model=SimulationResponse)
+def run_revenue_equality(
+    request: RevenueEqualityRunRequest,
+    db: Session = Depends(get_db),
+):
+    return execute_and_store(
+        db,
+        ExperimentKind.revenue_equality,
+        request.model_dump(),
+    )
 
 
 @router.get("/experiments", response_model=list[ExperimentResponse])

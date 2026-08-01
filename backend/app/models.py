@@ -15,6 +15,7 @@ class ExperimentKind(str, enum.Enum):
     auction = "auction"
     first_price = "first_price"
     learning = "learning"
+    revenue_equality = "revenue_equality"
     vickrey = "vickrey"
 
 

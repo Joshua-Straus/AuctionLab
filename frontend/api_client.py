@@ -52,6 +52,8 @@ class SimulatorApiClient:
             "action_summary",
             "action_history",
             "strategy_summary",
+            "revenue_by_trial",
+            "format_summary",
         ):
             if payload.get(key) is not None:
                 result[key] = pd.DataFrame(payload[key])
@@ -76,6 +78,14 @@ class SimulatorApiClient:
             "POST", "/simulations/first-price-strategies", parameters
         )
         return self._as_dashboard_result(payload, "first_price")
+
+    def run_revenue_equality(
+        self, parameters: dict[str, Any]
+    ) -> dict[str, Any]:
+        payload = self._request(
+            "POST", "/simulations/revenue-equality", parameters
+        )
+        return self._as_dashboard_result(payload, "revenue_equality")
 
     def list_experiments(self) -> list[dict[str, Any]]:
         return self._request("GET", "/experiments")

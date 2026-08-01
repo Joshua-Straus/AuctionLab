@@ -19,6 +19,7 @@ Streamlit is an HTTP-only frontend.
 - Fixed-strategy versus adaptive-agent learning comparisons
 - Dedicated Vickrey weak-dominance experiment comparing expected profit
 - Dedicated first-price experiment comparing every available bidder type
+- Paired revenue-equality test with trial-level seller revenue
 - Reproducible stored experiments with parameter overrides
 
 ## Architecture
@@ -92,6 +93,7 @@ POST /api/v1/simulations/auctions
 POST /api/v1/simulations/learning
 POST /api/v1/simulations/vickrey
 POST /api/v1/simulations/first-price-strategies
+POST /api/v1/simulations/revenue-equality
 
 GET  /api/v1/experiments
 GET  /api/v1/experiments/{slug}

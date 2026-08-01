@@ -11,9 +11,11 @@ from backend.app.schemas import (
     AuctionRunRequest,
     FirstPriceStrategyRunRequest,
     LearningRunRequest,
+    RevenueEqualityRunRequest,
     VickreyRunRequest,
 )
 from auction_sim.first_price_research import run_first_price_strategy_experiment
+from auction_sim.revenue_equality import run_revenue_equality_experiment
 from auction_sim.vickrey import run_vickrey_dominance_experiment
 from dashboard_logic import (
     run_auction_dashboard,
@@ -52,6 +54,18 @@ def execute(kind: ExperimentKind, parameters: dict[str, Any]) -> dict[str, Any]:
             "agent_summary": _records(raw["agent_summary"]),
             "strategy_summary": _records(raw["strategy_summary"]),
             "summary": raw["auction_summary"],
+            "comparison": raw["comparison"],
+        })
+    if kind == ExperimentKind.revenue_equality:
+        request = RevenueEqualityRunRequest.model_validate(parameters)
+        raw = run_revenue_equality_experiment(**request.model_dump())
+        revenue_records = _records(raw["revenue_by_trial"])
+        return jsonable_encoder({
+            "results": revenue_records,
+            "agent_summary": [],
+            "revenue_by_trial": revenue_records,
+            "format_summary": _records(raw["format_summary"]),
+            "summary": raw["summary"],
             "comparison": raw["comparison"],
         })
     request = LearningRunRequest.model_validate(parameters)

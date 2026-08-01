@@ -62,6 +62,20 @@ class FirstPriceStrategyRunRequest(BaseModel):
         return self
 
 
+class RevenueEqualityRunRequest(BaseModel):
+    num_rounds: int = Field(10_000, ge=100, le=20_000)
+    bidder_count: int = Field(16, ge=2, le=64)
+    low_value: float = 0.0
+    high_value: float = 100.0
+    seed: int = 42
+
+    @model_validator(mode="after")
+    def validate_range(self):
+        if self.low_value > self.high_value:
+            raise ValueError("low_value must not exceed high_value")
+        return self
+
+
 class SimulationResponse(BaseModel):
     run_id: uuid.UUID | None = None
     results: list[dict[str, Any]]
@@ -73,6 +87,8 @@ class SimulationResponse(BaseModel):
     strategy_summary: list[dict[str, Any]] | None = None
     proposition: dict[str, Any] | None = None
     comparison: dict[str, Any] | None = None
+    revenue_by_trial: list[dict[str, Any]] | None = None
+    format_summary: list[dict[str, Any]] | None = None
 
 
 class ExperimentResponse(BaseModel):
