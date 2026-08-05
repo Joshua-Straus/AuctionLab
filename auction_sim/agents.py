@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass, field
+from typing import Any
 
 from auction_sim.bandits import EpsilonGreedyPolicy
 
@@ -30,16 +31,17 @@ class Agent:
 
     agent_id: str
 
-    def bid(self, value: float, context: dict | None = None) -> float:
+    def bid(self, value: float, context: dict[str, Any] | None = None) -> float:
         raise NotImplementedError("Subclasses must implement bid().")
 
-    def update(self, result: dict) -> None:
+    def update(self, result: dict[str, Any]) -> None:
         """
         Optional learning/update method.
         Simple agents will ignore this.
         Adaptive agents will use this later.
         """
-        pass
+        return None
+
 
 @dataclass
 class TruthfulAgent(Agent):
@@ -47,9 +49,10 @@ class TruthfulAgent(Agent):
     Agent that always bids its true valuation.
     """
 
-    def bid(self, value: float, context: dict | None = None) -> float:
+    def bid(self, value: float, context: dict[str, Any] | None = None) -> float:
         validate_value(value)
         return value
+
 
 @dataclass
 class RandomAgent(Agent):
@@ -57,9 +60,10 @@ class RandomAgent(Agent):
     Agent that bids a random amount between 0 and its valuation.
     """
 
-    def bid(self, value: float, context: dict | None = None) -> float:
+    def bid(self, value: float, context: dict[str, Any] | None = None) -> float:
         validate_value(value)
         return random.uniform(0, value)
+
 
 @dataclass
 class ShadingAgent(Agent):
@@ -72,7 +76,7 @@ class ShadingAgent(Agent):
     def __post_init__(self) -> None:
         validate_alpha(self.alpha)
 
-    def bid(self, value: float, context: dict | None = None) -> float:
+    def bid(self, value: float, context: dict[str, Any] | None = None) -> float:
         validate_value(value)
         return value * self.alpha
 
@@ -81,7 +85,7 @@ class ShadingAgent(Agent):
 class EquilibriumFirstPriceAgent(Agent):
     """Symmetric equilibrium bidder for uniform private values."""
 
-    def bid(self, value: float, context: dict | None = None) -> float:
+    def bid(self, value: float, context: dict[str, Any] | None = None) -> float:
         validate_value(value)
         if context is None or "num_agents" not in context:
             raise ValueError(
@@ -111,11 +115,11 @@ class BanditAgent(Agent):
             seed=self.seed,
         )
 
-    def bid(self, value: float, context: dict | None = None) -> float:
+    def bid(self, value: float, context: dict[str, Any] | None = None) -> float:
         validate_value(value)
         return self.policy.select_action() * value
 
-    def update(self, result: dict) -> None:
+    def update(self, result: dict[str, Any]) -> None:
         self.policy.update(float(result.get("profit", 0.0)))
 
     @property

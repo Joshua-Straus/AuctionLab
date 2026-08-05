@@ -40,7 +40,7 @@ class SimulatorApiClient:
         return response.json()
 
     @staticmethod
-    def _as_dashboard_result(payload: dict[str, Any], kind: str) -> dict[str, Any]:
+    def _as_dashboard_result(payload: dict[str, Any]) -> dict[str, Any]:
         result = {
             **payload,
             "results": pd.DataFrame(payload["results"]),
@@ -61,15 +61,15 @@ class SimulatorApiClient:
 
     def run_auction(self, parameters: dict[str, Any]) -> dict[str, Any]:
         payload = self._request("POST", "/simulations/auctions", parameters)
-        return self._as_dashboard_result(payload, "auction")
+        return self._as_dashboard_result(payload)
 
     def run_learning(self, parameters: dict[str, Any]) -> dict[str, Any]:
         payload = self._request("POST", "/simulations/learning", parameters)
-        return self._as_dashboard_result(payload, "learning")
+        return self._as_dashboard_result(payload)
 
     def run_vickrey(self, parameters: dict[str, Any]) -> dict[str, Any]:
         payload = self._request("POST", "/simulations/vickrey", parameters)
-        return self._as_dashboard_result(payload, "vickrey")
+        return self._as_dashboard_result(payload)
 
     def run_first_price_strategies(
         self, parameters: dict[str, Any]
@@ -77,7 +77,7 @@ class SimulatorApiClient:
         payload = self._request(
             "POST", "/simulations/first-price-strategies", parameters
         )
-        return self._as_dashboard_result(payload, "first_price")
+        return self._as_dashboard_result(payload)
 
     def run_revenue_equality(
         self, parameters: dict[str, Any]
@@ -85,15 +85,15 @@ class SimulatorApiClient:
         payload = self._request(
             "POST", "/simulations/revenue-equality", parameters
         )
-        return self._as_dashboard_result(payload, "revenue_equality")
+        return self._as_dashboard_result(payload)
 
     def list_experiments(self) -> list[dict[str, Any]]:
         return self._request("GET", "/experiments")
 
     def run_experiment(
-        self, slug: str, kind: str, overrides: dict[str, Any] | None = None
+        self, slug: str, overrides: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         payload = self._request(
             "POST", f"/experiments/{slug}/run", {"overrides": overrides or {}}
         )
-        return self._as_dashboard_result(payload, kind)
+        return self._as_dashboard_result(payload)

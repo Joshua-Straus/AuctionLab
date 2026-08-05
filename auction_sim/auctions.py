@@ -4,11 +4,33 @@ File to define different auction mechanisms.
 
 from __future__ import annotations
 
-import random
 import heapq
+import random
 from dataclasses import dataclass
 
 from auction_sim.results import AuctionResult
+
+
+def _select_winner(bids: dict[str, float]) -> str:
+    """Choose uniformly among bidders tied for the highest bid."""
+    if not bids:
+        raise ValueError("Cannot run auction with no bids.")
+
+    highest_bid = max(bids.values())
+    tied_winners = [
+        agent_id for agent_id, bid in bids.items() if bid == highest_bid
+    ]
+    return random.choice(tied_winners)
+
+
+def _calculate_profits(
+    valuations: dict[str, float], winner_id: str, price_paid: float
+) -> dict[str, float]:
+    return {
+        agent_id: valuation - price_paid if agent_id == winner_id else 0.0
+        for agent_id, valuation in valuations.items()
+    }
+
 
 @dataclass
 class Auction:
@@ -25,7 +47,8 @@ class Auction:
         bids: dict[str, float],
     ) -> AuctionResult:
         raise NotImplementedError("Subclasses must implement run().")
-    
+
+
 @dataclass
 class FirstPriceAuction(Auction):
     """
@@ -39,39 +62,21 @@ class FirstPriceAuction(Auction):
         valuations: dict[str, float],
         bids: dict[str, float],
     ) -> AuctionResult:
-        if not bids:
-            raise ValueError("Cannot run auction with no bids.")
-
-        max_bid = max(bids.values())
-
-        # Handle ties randomly among highest bidders.
-        tied_winners = [
-            agent_id for agent_id, bid in bids.items()
-            if bid == max_bid
-        ]
-        winner_id = random.choice(tied_winners)
+        winner_id = _select_winner(bids)
         price_paid = bids[winner_id]
-        seller_revenue = price_paid
-        
-        profits = {}
 
-        for agent_id, valuation in valuations.items():
-            if agent_id == winner_id:
-                profits[agent_id] = valuation - price_paid
-            else:
-                profits[agent_id] = 0.0
-        
         return AuctionResult(
             round_id=round_id,
             auction_type=self.auction_type,
             winner_id=winner_id,
             price_paid=price_paid,
-            seller_revenue=seller_revenue,
+            seller_revenue=price_paid,
             valuations=valuations,
             bids=bids,
-            profits=profits,
+            profits=_calculate_profits(valuations, winner_id, price_paid),
         )
-    
+
+
 @dataclass
 class SecondPriceAuction(Auction):
     """
@@ -85,39 +90,18 @@ class SecondPriceAuction(Auction):
         valuations: dict[str, float],
         bids: dict[str, float],
     ) -> AuctionResult:
-        if not bids:
-            raise ValueError("Cannot run auction with no bids.")
+        winner_id = _select_winner(bids)
+        price_paid = (
+            heapq.nlargest(2, bids.values())[1] if len(bids) > 1 else 0.0
+        )
 
-        max_bid = max(bids.values())
-
-
-        # Handle ties randomly among highest bidders.
-        tied_winners = [
-            agent_id for agent_id, bid in bids.items()
-            if bid == max_bid
-        ]
-        winner_id = random.choice(tied_winners)
-        if len(bids) == 1:
-            price_paid = 0.0
-        else:
-            price_paid = heapq.nlargest(2, bids.values())[1]
-        seller_revenue = price_paid
-        
-        profits = {}
-
-        for agent_id, valuation in valuations.items():
-            if agent_id == winner_id:
-                profits[agent_id] = valuation - price_paid
-            else:
-                profits[agent_id] = 0.0
-        
         return AuctionResult(
             round_id=round_id,
             auction_type=self.auction_type,
             winner_id=winner_id,
             price_paid=price_paid,
-            seller_revenue=seller_revenue,
+            seller_revenue=price_paid,
             valuations=valuations,
             bids=bids,
-            profits=profits,
+            profits=_calculate_profits(valuations, winner_id, price_paid),
         )

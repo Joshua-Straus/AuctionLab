@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from auction_sim.agents import RandomAgent, ShadingAgent, TruthfulAgent
+from auction_sim.agents import Agent, RandomAgent, ShadingAgent, TruthfulAgent
 from auction_sim.auctions import Auction, FirstPriceAuction, SecondPriceAuction
 from auction_sim.config import ExperimentConfig
 from auction_sim.data import results_to_dataframe
@@ -23,7 +23,7 @@ from auction_sim.plots import (
 )
 from auction_sim.simulation import Simulation
 
-def make_baseline_agents():
+def make_baseline_agents() -> list[Agent]:
     """
     Creates a standard set of agents for baseline auction experiments.
     """
@@ -58,8 +58,8 @@ def run_experiment(
     low_value: float | None = None,
     high_value: float | None = None,
     seed: int | None = None,
-    agents=None,
-) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
+    agents: list[Agent] | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, object]]:
     """
     Runs one auction experiment and returns:
     - full round-level dataframe
@@ -123,7 +123,8 @@ def run_baseline_comparison(
     Saves outputs to CSV.
     """
 
-    Path(output_dir).mkdir(exist_ok=True)
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
 
     round_count = num_rounds if num_rounds is not None else 10_000
 
@@ -141,20 +142,20 @@ def run_baseline_comparison(
 
         df, agent_summary, auction_summary = run_experiment(config)
 
-        df.to_csv(f"{output_dir}/{auction_type}_results.csv", index=False)
+        df.to_csv(output_path / f"{auction_type}_results.csv", index=False)
         agent_summary.to_csv(
-            f"{output_dir}/{auction_type}_agent_summary.csv",
+            output_path / f"{auction_type}_agent_summary.csv",
             index=False,
         )
 
         plot_agent_profit(
             agent_summary,
-            output_path=f"{output_dir}/{auction_type}_agent_profit.png",
+            output_path=str(output_path / f"{auction_type}_agent_profit.png"),
         )
 
         plot_agent_win_rate(
             agent_summary,
-            output_path=f"{output_dir}/{auction_type}_agent_win_rate.png",
+            output_path=str(output_path / f"{auction_type}_agent_win_rate.png"),
         )
 
         all_results[auction_type] = {
@@ -196,7 +197,7 @@ def run_competition_sweep(
     if bidder_counts is None:
         bidder_counts = [2, 4, 8, 16, 32]
 
-    Path(output_dir).mkdir(exist_ok=True)
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
 
     rows = []
 
@@ -261,7 +262,7 @@ def run_strategy_sweep(
     if alpha_values is None:
         alpha_values = [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 
-    Path(output_dir).mkdir(exist_ok=True)
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
 
     all_agents = []
     alpha_by_agent = {}

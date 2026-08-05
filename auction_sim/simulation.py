@@ -24,26 +24,24 @@ class Simulation:
         self.auction = auction
         self.low_value = low_value
         self.high_value = high_value
-        self.agents = agents or []
+        self.agents = list(agents) if agents is not None else []
         self.num_rounds = num_rounds
         if seed is not None:
             random.seed(seed)
 
     def run(self) -> list[AuctionResult]:
-        records = []
+        records: list[AuctionResult] = []
         for round_id in range(1, self.num_rounds + 1):
-            valuations = {}
-            bids = {}
+            valuations: dict[str, float] = {}
+            bids: dict[str, float] = {}
+            context = {
+                "round_id": round_id,
+                "auction_type": self.auction.auction_type,
+                "num_agents": len(self.agents),
+            }
             for agent in self.agents:
                 valuation = random.uniform(self.low_value, self.high_value)
-                bid = agent.bid(
-                    valuation,
-                    context={
-                        "round_id": round_id,
-                        "auction_type": self.auction.auction_type,
-                        "num_agents": len(self.agents),
-                    },
-                )
+                bid = agent.bid(valuation, context=context)
                 valuations[agent.agent_id] = valuation
                 bids[agent.agent_id] = bid
 
@@ -52,7 +50,7 @@ class Simulation:
                 valuations=valuations,
                 bids=bids,
             )
-                
+
             for agent in self.agents:
                 agent.update(
                     {
@@ -64,6 +62,6 @@ class Simulation:
                         "winner_id": result.winner_id,
                         "price_paid": result.price_paid,
                     }
-                ) 
+                )
             records.append(result)
         return records

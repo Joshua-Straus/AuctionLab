@@ -428,7 +428,7 @@ if experiments:
             try:
                 with st.spinner("Running stored experiment..."):
                     result = SimulatorApiClient().run_experiment(
-                        selected["slug"], selected["kind"]
+                        selected["slug"]
                     )
                 st.session_state[f"{selected['kind']}_result"] = result
                 st.success("Experiment complete. Open its matching view below.")
