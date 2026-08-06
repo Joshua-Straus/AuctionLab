@@ -92,6 +92,11 @@ def run_first_price_strategy_experiment(
         .sort_values("expected_profit", ascending=False)
     )
     leader = strategy_summary.iloc[0]
+    equilibrium_caveat = (
+        "The equilibrium bidders compete in a mixed-strategy environment with "
+        "other bidder types, so the symmetric-equilibrium bid is not necessarily "
+        "a best response in this comparison."
+    )
     comparison = {
         "question": "Which agent type makes the most profit on average?",
         "highest_profit_strategy": str(leader["strategy"]),
@@ -99,9 +104,11 @@ def run_first_price_strategy_experiment(
         "num_agent_types": int(strategy_summary["strategy"].nunique()),
         "total_agents": len(agents),
         "equilibrium_bid_multiplier": (len(agents) - 1) / len(agents),
+        "equilibrium_value_lower_bound": low_value,
+        "equilibrium_caveat": equilibrium_caveat,
         "interpretation": (
             f"{leader['strategy']} earned the highest mean profit per bidder-round "
-            "in this simulation."
+            f"in this simulation. {equilibrium_caveat}"
         ),
     }
     return {

@@ -42,15 +42,15 @@ PREMADE_EXPERIMENTS: tuple[dict[str, Any], ...] = (
         "slug": "vickrey-dominant-strategy-test",
         "name": "Vickrey dominant-strategy test",
         "description": (
-            "Tests whether truthful bidding weakly dominates shading and "
-            "adaptive bandit bidding in a second-price auction."
+            "Compares truthful utility with an array of nearby bids under "
+            "identical second-price auction conditions."
         ),
         "kind": ExperimentKind.vickrey,
         "parameters": {
             "num_rounds": 5000,
-            "agents_per_strategy": 3,
-            "shading_alpha": 0.8,
-            "epsilon": 0.1,
+            "bidder_count": 6,
+            "bid_spread": 20.0,
+            "bid_count": 9,
             "low_value": 0.0,
             "high_value": 100.0,
             "seed": 42,

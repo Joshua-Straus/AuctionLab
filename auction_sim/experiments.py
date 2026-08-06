@@ -10,7 +10,13 @@ from pathlib import Path
 import pandas as pd
 
 from auction_sim.agents import Agent, RandomAgent, ShadingAgent, TruthfulAgent
-from auction_sim.auctions import Auction, FirstPriceAuction, SecondPriceAuction
+from auction_sim.auctions import (
+    Auction,
+    DutchAuction,
+    EnglishAuction,
+    FirstPriceAuction,
+    SecondPriceAuction,
+)
 from auction_sim.config import ExperimentConfig
 from auction_sim.data import results_to_dataframe
 from auction_sim.metrics import summarize_agents, summarize_auction
@@ -37,7 +43,11 @@ def make_baseline_agents() -> list[Agent]:
     ]
 
 
-def make_auction(auction_type: str) -> Auction:
+def make_auction(
+    auction_type: str,
+    min_bid: float = 0.0,
+    max_bid: float = 100.0,
+) -> Auction:
     """
     Creates an auction object from a string name.
     """
@@ -46,6 +56,10 @@ def make_auction(auction_type: str) -> Auction:
 
     if auction_type == "second_price":
         return SecondPriceAuction()
+    if auction_type == "english":
+        return EnglishAuction(min_bid=min_bid, max_bid=max_bid)
+    if auction_type == "dutch":
+        return DutchAuction(min_bid=min_bid, max_bid=max_bid)
     raise ValueError(f"Unknown auction type: {auction_type}")
 
 
@@ -91,7 +105,11 @@ def run_experiment(
             seed=seed if seed is not None else 42,
         )
 
-    selected_auction = auction if auction is not None else make_auction(config.auction_type)
+    selected_auction = auction or make_auction(
+        config.auction_type,
+        min_bid=config.low_value,
+        max_bid=config.high_value,
+    )
 
     if agents is None:
         agents = make_baseline_agents()

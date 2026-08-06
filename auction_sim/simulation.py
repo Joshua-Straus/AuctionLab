@@ -38,6 +38,7 @@ class Simulation:
                 "round_id": round_id,
                 "auction_type": self.auction.auction_type,
                 "num_agents": len(self.agents),
+                "low_value": self.low_value,
             }
             for agent in self.agents:
                 valuation = random.uniform(self.low_value, self.high_value)

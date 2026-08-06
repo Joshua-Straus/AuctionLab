@@ -83,7 +83,7 @@ class ShadingAgent(Agent):
 
 @dataclass
 class EquilibriumFirstPriceAgent(Agent):
-    """Symmetric equilibrium bidder for uniform private values."""
+    """Symmetric equilibrium bidder for uniform values on a bounded interval."""
 
     def bid(self, value: float, context: dict[str, Any] | None = None) -> float:
         validate_value(value)
@@ -94,7 +94,12 @@ class EquilibriumFirstPriceAgent(Agent):
         num_agents = int(context["num_agents"])
         if num_agents <= 0:
             raise ValueError("num_agents must be positive.")
-        return ((num_agents - 1) / num_agents) * value
+        low_value = float(context.get("low_value", 0.0))
+        if value < low_value:
+            raise ValueError("Private valuation cannot be below low_value.")
+
+        bid_multiplier = (num_agents - 1) / num_agents
+        return low_value + bid_multiplier * (value - low_value)
 
 
 @dataclass

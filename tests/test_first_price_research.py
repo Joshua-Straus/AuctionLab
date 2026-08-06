@@ -10,6 +10,15 @@ def test_equilibrium_first_price_agent_uses_number_of_agents():
     assert agent.bid(100.0, {"num_agents": 5}) == pytest.approx(80.0)
 
 
+def test_equilibrium_first_price_agent_uses_nonzero_lower_bound():
+    agent = EquilibriumFirstPriceAgent(agent_id="equilibrium")
+
+    assert agent.bid(
+        100.0,
+        {"num_agents": 5, "low_value": 25.0},
+    ) == pytest.approx(85.0)
+
+
 def test_equilibrium_first_price_agent_requires_participant_context():
     agent = EquilibriumFirstPriceAgent(agent_id="equilibrium")
 
@@ -36,3 +45,19 @@ def test_first_price_experiment_compares_every_agent_type():
     assert result["comparison"]["highest_profit_strategy"] in set(
         result["strategy_summary"]["strategy"]
     )
+    assert "mixed-strategy environment" in result["comparison"][
+        "equilibrium_caveat"
+    ]
+
+
+def test_first_price_experiment_passes_lower_bound_to_equilibrium_agents():
+    result = run_first_price_strategy_experiment(
+        num_rounds=20,
+        agents_per_strategy=1,
+        low_value=50.0,
+        high_value=50.0,
+        seed=42,
+    )
+
+    equilibrium_results = result["results"].query("strategy == 'Equilibrium'")
+    assert set(equilibrium_results["bid"]) == {50.0}

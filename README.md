@@ -1,9 +1,10 @@
 # Auction Strategy Research Simulator
 
-A full-stack research application for studying bidding behavior in first-price
-and second-price sealed-bid auctions. It supports truthful, shaded, random, and
-epsilon-greedy strategies; Monte Carlo experiments; competition and strategy
-sweeps; economic metrics; and persisted reproducible experiments.
+A full-stack research application for studying bidding behavior in first-price,
+second-price, ascending English, and descending Dutch auctions. It supports
+truthful, shaded, random, and epsilon-greedy strategies; Monte Carlo experiments;
+competition and strategy sweeps; economic metrics; and persisted reproducible
+experiments.
 
 The simulation engine remains framework-independent. FastAPI is the application
 boundary, PostgreSQL stores experiment definitions and run outputs, and
@@ -11,13 +12,14 @@ Streamlit is an HTTP-only frontend.
 
 ## Research capabilities
 
-- First-price and second-price sealed-bid mechanisms
+- First-price, second-price, ascending English, and descending Dutch mechanisms
 - Truthful, random, fixed-shading, adaptive bandit, and equilibrium bidders
 - Configurable bidder counts and private-value distributions
 - Seller revenue, bidder profit, regret, win rate, and allocative efficiency
 - Competition and head-to-head strategy sweeps
 - Fixed-strategy versus adaptive-agent learning comparisons
-- Dedicated Vickrey weak-dominance experiment comparing expected profit
+- Dedicated Vickrey weak-dominance experiment comparing truthful utility with
+  an array of nearby bids under identical auction conditions
 - Dedicated first-price experiment comparing every available bidder type
 - Paired revenue-equality test with trial-level seller revenue
 - Reproducible stored experiments with parameter overrides

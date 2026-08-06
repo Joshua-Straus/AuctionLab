@@ -54,7 +54,8 @@ def auction_view() -> None:
         st.subheader("Auction controls")
         auction_type = st.selectbox(
             "Auction type",
-            ["first_price", "second_price"],
+            ["first_price", "second_price", "english", "dutch"],
+            format_func=lambda value: value.replace("_", " ").title(),
         )
         num_rounds = st.number_input(
             "Rounds",
@@ -162,8 +163,9 @@ def vickrey_view() -> None:
     st.subheader("Vickrey (Second Price) Auction Test")
     st.markdown(
         "Tests the proposition: **“Bidding your valuation is a weakly-dominant "
-        "strategy in a second-price auction.”** Truthful, fixed-shading, and "
-        "adaptive bandit bidders compete in the same repeated auctions."
+        "strategy in a second-price auction.”** For each valuation and fixed set "
+        "of opponent bids, truthful utility is compared with an array of nearby "
+        "underbids and overbids."
     )
     with st.sidebar:
         st.subheader("Vickrey test controls")
@@ -174,12 +176,16 @@ def vickrey_view() -> None:
             value=5_000,
             step=500,
         )
-        agents_per_strategy = st.slider("Agents per strategy", 1, 5, 3)
-        shading_alpha = st.slider(
-            "Vickrey shading multiplier", 0.1, 1.0, 0.8, 0.05
+        bidder_count = st.slider("Vickrey bidder count", 2, 64, 6)
+        bid_spread = st.number_input(
+            "Nearby bid spread (+/−)",
+            min_value=1.0,
+            max_value=100.0,
+            value=20.0,
+            step=5.0,
         )
-        epsilon = st.slider(
-            "Vickrey bandit exploration", 0.0, 1.0, 0.1, 0.05
+        bid_count = st.slider(
+            "Number of candidate bids", 3, 21, 9, step=2
         )
         value_range = st.slider(
             "Vickrey valuation range",
@@ -196,9 +202,9 @@ def vickrey_view() -> None:
             with st.spinner("Testing truthful bidding in a Vickrey auction..."):
                 st.session_state["vickrey_result"] = cached_vickrey_run(
                     num_rounds=int(num_rounds),
-                    agents_per_strategy=agents_per_strategy,
-                    shading_alpha=shading_alpha,
-                    epsilon=epsilon,
+                    bidder_count=bidder_count,
+                    bid_spread=bid_spread,
+                    bid_count=bid_count,
                     low_value=value_range[0],
                     high_value=value_range[1],
                     seed=int(seed),
@@ -208,16 +214,16 @@ def vickrey_view() -> None:
 
     result = st.session_state.get("vickrey_result")
     if not result:
-        st.info("Run the experiment to compare expected profit by bidding strategy.")
+        st.info("Run the experiment to compare truthful and nearby bids.")
         return
 
     proposition = result["proposition"]
     metric_row(
         proposition,
         [
-            ("truthful_expected_profit", "Truthful expected profit"),
-            ("shading_expected_profit", "Shading expected profit"),
-            ("bandit_expected_profit", "Bandit expected profit"),
+            ("truthful_wins", "Truthful wins"),
+            ("ties", "Ties"),
+            ("truthful_losses", "Truthful losses"),
         ],
     )
     if proposition["supports_proposition"]:
@@ -225,20 +231,22 @@ def vickrey_view() -> None:
     else:
         st.warning(proposition["interpretation"])
     st.caption(
-        "Expected profit is mean profit per bidder per auction. This Monte Carlo "
-        "result illustrates the theoretical proposition but does not replace its proof."
+        "A win means truthful bidding produced greater utility than the candidate "
+        "bid under the exact same valuation and opponent bids; a tie means equal "
+        "utility. The truthful self-comparison is omitted from headline counts."
     )
 
     strategy_summary = result["strategy_summary"]
     left, right = st.columns(2)
-    left.subheader("Expected profit by strategy")
-    left.bar_chart(strategy_summary.set_index("strategy")["expected_profit"])
-    right.subheader("Average bid/value ratio")
-    right.bar_chart(strategy_summary.set_index("strategy")["avg_bid_to_value"])
-    st.subheader("Strategy comparison")
+    chart_data = strategy_summary.set_index("bid_delta")
+    left.subheader("Wins, ties, and losses by bid delta")
+    left.bar_chart(chart_data[["truthful_wins", "ties", "truthful_losses"]])
+    right.subheader("Average truthful utility advantage")
+    right.bar_chart(chart_data["average_truthful_advantage"])
+    st.subheader("Candidate-bid comparison")
     st.dataframe(strategy_summary, use_container_width=True, hide_index=True)
-    with st.expander("Agent-level results"):
-        st.dataframe(result["agent_summary"], use_container_width=True, hide_index=True)
+    with st.expander("Round-level counterfactual results"):
+        st.dataframe(result["results"], use_container_width=True, hide_index=True)
 
 
 def first_price_strategy_view() -> None:
@@ -310,7 +318,9 @@ def first_price_strategy_view() -> None:
     )
     st.caption(
         "Expected profit is mean profit per bidder per auction. The equilibrium "
-        "agent bids b(v) = [(n−1)/n]v using the displayed total bidder count."
+        "agent bids b(v) = L + [(n−1)/n](v−L), where L is the valuation lower "
+        "bound and n is the displayed total bidder count. "
+        + comparison["equilibrium_caveat"]
     )
 
     strategy_summary = result["strategy_summary"]

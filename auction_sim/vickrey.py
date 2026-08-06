@@ -1,113 +1,162 @@
-"""Dedicated experiment for truthful bidding in second-price auctions."""
+"""Counterfactual weak-dominance experiment for second-price auctions."""
 
 from __future__ import annotations
 
+import random
+
+import numpy as np
 import pandas as pd
 
-from auction_sim.agents import BanditAgent, ShadingAgent, TruthfulAgent
-from auction_sim.config import ExperimentConfig
-from auction_sim.experiments import run_experiment
+
+def _utility(
+    valuation: float,
+    bid: float,
+    opponent_bids: list[float],
+) -> float:
+    """Return expected utility, sharing the allocation on an exact bid tie."""
+    highest_opponent_bid = max(opponent_bids)
+    if bid < highest_opponent_bid:
+        return 0.0
+
+    surplus = valuation - highest_opponent_bid
+    if bid > highest_opponent_bid:
+        return surplus
+
+    tied_opponents = sum(bid == opponent_bid for opponent_bid in opponent_bids)
+    return surplus / (tied_opponents + 1)
+
+
+def _comparison_outcome(
+    truthful_utility: float,
+    alternative_utility: float,
+) -> str:
+    if np.isclose(truthful_utility, alternative_utility):
+        return "tie"
+    return "win" if truthful_utility > alternative_utility else "loss"
 
 
 def run_vickrey_dominance_experiment(
     num_rounds: int = 5_000,
-    agents_per_strategy: int = 3,
-    shading_alpha: float = 0.8,
-    epsilon: float = 0.1,
+    bidder_count: int = 6,
+    bid_spread: float = 20.0,
+    bid_count: int = 9,
     low_value: float = 0.0,
     high_value: float = 100.0,
     seed: int = 42,
 ) -> dict:
-    """Compare truthful, shaded, and adaptive bids in a Vickrey auction."""
-    if not 1 <= agents_per_strategy <= 5:
-        raise ValueError("agents_per_strategy must be between 1 and 5.")
+    """Compare truthful utility with nearby bids under identical conditions."""
+    if num_rounds <= 0:
+        raise ValueError("num_rounds must be positive.")
+    if bidder_count < 2:
+        raise ValueError("bidder_count must be at least 2.")
+    if bid_spread <= 0:
+        raise ValueError("bid_spread must be positive.")
+    if bid_count < 3 or bid_count % 2 == 0:
+        raise ValueError("bid_count must be an odd number of at least 3.")
+    if low_value > high_value:
+        raise ValueError("Valuation range is invalid.")
 
-    agents = []
-    strategy_by_agent: dict[str, str] = {}
-    for index in range(agents_per_strategy):
-        truthful_id = f"truthful_{index}"
-        shading_id = f"shading_{index}"
-        bandit_id = f"bandit_{index}"
-        agents.extend(
-            [
-                TruthfulAgent(agent_id=truthful_id),
-                ShadingAgent(agent_id=shading_id, alpha=shading_alpha),
-                BanditAgent(
-                    agent_id=bandit_id,
-                    epsilon=epsilon,
-                    seed=seed + index,
-                ),
-            ]
-        )
-        strategy_by_agent.update(
-            {
-                truthful_id: "Truthful",
-                shading_id: f"Shading ({shading_alpha:.2f}×)",
-                bandit_id: "Bandit",
+    bid_deltas = np.linspace(-bid_spread, bid_spread, bid_count)
+    rng = random.Random(seed)
+    rows: list[dict[str, object]] = []
+
+    for round_id in range(1, num_rounds + 1):
+        valuation = rng.uniform(low_value, high_value)
+        opponent_bids = [
+            rng.uniform(low_value, high_value)
+            for _ in range(bidder_count - 1)
+        ]
+        highest_opponent_bid = max(opponent_bids)
+        truthful_utility = _utility(valuation, valuation, opponent_bids)
+
+        for bid_delta in bid_deltas:
+            alternative_bid = max(0.0, valuation + float(bid_delta))
+            alternative_utility = _utility(
+                valuation,
+                alternative_bid,
+                opponent_bids,
+            )
+            rows.append(
+                {
+                    "round_id": round_id,
+                    "auction_type": "second_price",
+                    "valuation": valuation,
+                    "highest_opponent_bid": highest_opponent_bid,
+                    "bid_delta": float(bid_delta),
+                    "alternative_bid": alternative_bid,
+                    "truthful_utility": truthful_utility,
+                    "alternative_utility": alternative_utility,
+                    "utility_difference": truthful_utility
+                    - alternative_utility,
+                    "outcome": _comparison_outcome(
+                        truthful_utility,
+                        alternative_utility,
+                    ),
+                }
+            )
+
+    results = pd.DataFrame(rows)
+    outcome_counts = (
+        results.groupby(["bid_delta", "outcome"])
+        .size()
+        .unstack(fill_value=0)
+        .reindex(columns=["win", "tie", "loss"], fill_value=0)
+        .reset_index()
+        .rename(
+            columns={
+                "win": "truthful_wins",
+                "tie": "ties",
+                "loss": "truthful_losses",
             }
         )
-
-    results, agent_summary, auction_summary = run_experiment(
-        config=ExperimentConfig(
-            auction_type="second_price",
-            num_rounds=num_rounds,
-            low_value=low_value,
-            high_value=high_value,
-            seed=seed,
-        ),
-        agents=agents,
     )
-    results = results.assign(strategy=results["agent_id"].map(strategy_by_agent))
-    results["bid_to_value"] = (
-        results["bid"] / results["valuation"].where(results["valuation"] != 0)
-    ).fillna(0.0)
-    agent_summary = agent_summary.assign(
-        strategy=agent_summary["agent_id"].map(strategy_by_agent)
-    )
-    strategy_summary = (
-        results.groupby("strategy", as_index=False)
+    utility_summary = (
+        results.groupby("bid_delta", as_index=False)
         .agg(
-            expected_profit=("profit", "mean"),
-            total_profit=("profit", "sum"),
-            win_rate=("is_winner", "mean"),
-            avg_bid=("bid", "mean"),
-            avg_valuation=("valuation", "mean"),
-            avg_bid_to_value=("bid_to_value", "mean"),
+            average_alternative_bid=("alternative_bid", "mean"),
+            truthful_expected_utility=("truthful_utility", "mean"),
+            alternative_expected_utility=("alternative_utility", "mean"),
+            average_truthful_advantage=("utility_difference", "mean"),
         )
-        .sort_values("expected_profit", ascending=False)
     )
+    strategy_summary = outcome_counts.merge(utility_summary, on="bid_delta")
+    strategy_summary["comparisons"] = num_rounds
 
-    profit_by_strategy = strategy_summary.set_index("strategy")["expected_profit"]
-    truthful_profit = float(profit_by_strategy["Truthful"])
-    shading_label = f"Shading ({shading_alpha:.2f}×)"
-    shading_profit = float(profit_by_strategy[shading_label])
-    bandit_profit = float(profit_by_strategy["Bandit"])
-    tolerance = max(0.01, abs(truthful_profit) * 0.01)
-    supports_proposition = (
-        truthful_profit + tolerance >= shading_profit
-        and truthful_profit + tolerance >= bandit_profit
-    )
+    nontruthful = strategy_summary[~np.isclose(strategy_summary["bid_delta"], 0)]
+    total_wins = int(nontruthful["truthful_wins"].sum())
+    total_ties = int(nontruthful["ties"].sum())
+    total_losses = int(nontruthful["truthful_losses"].sum())
+    supports_proposition = total_losses == 0
     proposition = {
         "statement": (
-            "Bidding your valuation is a weakly-dominant strategy in a "
-            "second-price auction."
+            "Bidding your valuation weakly dominates nearby alternative bids "
+            "in a second-price auction."
         ),
-        "truthful_expected_profit": truthful_profit,
-        "shading_expected_profit": shading_profit,
-        "bandit_expected_profit": bandit_profit,
-        "truthful_advantage_over_shading": truthful_profit - shading_profit,
-        "truthful_advantage_over_bandit": truthful_profit - bandit_profit,
+        "truthful_wins": total_wins,
+        "ties": total_ties,
+        "truthful_losses": total_losses,
+        "total_comparisons": total_wins + total_ties + total_losses,
         "supports_proposition": supports_proposition,
         "interpretation": (
-            "The simulated expected-profit ordering is consistent with the proposition."
+            "Truthful bidding never produced lower utility than a nearby bid "
+            "under the same valuation and opponent bids."
             if supports_proposition
-            else "Sampling variation is not consistent with the expected ordering; run more rounds."
+            else "At least one nearby bid produced higher utility; inspect the "
+            "reported loss cases."
         ),
+    }
+    summary = {
+        "num_rounds": num_rounds,
+        "bidder_count": bidder_count,
+        "bid_count": bid_count,
+        "bid_spread": bid_spread,
+        "low_value": low_value,
+        "high_value": high_value,
     }
     return {
         "results": results,
-        "agent_summary": agent_summary,
+        "agent_summary": strategy_summary.copy(),
         "strategy_summary": strategy_summary,
-        "auction_summary": auction_summary,
+        "auction_summary": summary,
         "proposition": proposition,
     }

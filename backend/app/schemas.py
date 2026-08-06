@@ -8,7 +8,9 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class AuctionRunRequest(BaseModel):
-    auction_type: Literal["first_price", "second_price"] = "first_price"
+    auction_type: Literal[
+        "first_price", "second_price", "english", "dutch"
+    ] = "first_price"
     num_rounds: int = Field(1000, gt=0, le=20_000)
     bidder_count: int = Field(6, ge=1, le=16)
     strategy: Literal["truthful", "shading", "bandit", "mixed"] = "mixed"
@@ -21,6 +23,11 @@ class AuctionRunRequest(BaseModel):
     def validate_range(self):
         if self.low_value > self.high_value:
             raise ValueError("low_value must not exceed high_value")
+        if (
+            self.auction_type in {"english", "dutch"}
+            and self.low_value == self.high_value
+        ):
+            raise ValueError("Clock auctions require a non-empty bid range")
         return self
 
 
@@ -32,9 +39,9 @@ class LearningRunRequest(BaseModel):
 
 class VickreyRunRequest(BaseModel):
     num_rounds: int = Field(5000, gt=0, le=20_000)
-    agents_per_strategy: int = Field(3, ge=1, le=5)
-    shading_alpha: float = Field(0.8, ge=0, le=1.2)
-    epsilon: float = Field(0.1, ge=0, le=1)
+    bidder_count: int = Field(6, ge=2, le=64)
+    bid_spread: float = Field(20.0, gt=0)
+    bid_count: int = Field(9, ge=3, le=21)
     low_value: float = 0.0
     high_value: float = 100.0
     seed: int = 42
@@ -43,6 +50,8 @@ class VickreyRunRequest(BaseModel):
     def validate_range(self):
         if self.low_value > self.high_value:
             raise ValueError("low_value must not exceed high_value")
+        if self.bid_count % 2 == 0:
+            raise ValueError("bid_count must be odd so the grid includes truth-telling")
         return self
 
 

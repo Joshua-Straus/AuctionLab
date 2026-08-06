@@ -1,4 +1,11 @@
-from auction_sim.auctions import FirstPriceAuction
+import pytest
+
+from auction_sim.auctions import (
+    DutchAuction,
+    EnglishAuction,
+    FirstPriceAuction,
+    SecondPriceAuction,
+)
 
 
 def test_first_price_auction_type():
@@ -77,7 +84,77 @@ def test_first_price_profit_calculation():
     assert result.profits["b"] == 10
     assert result.profits["a"] == 0
 
-from auction_sim.auctions import FirstPriceAuction, SecondPriceAuction
+
+def test_english_auction_uses_one_hundred_equal_bid_increments():
+    auction = EnglishAuction(min_bid=20.0, max_bid=120.0)
+
+    assert auction.bid_increment == pytest.approx(1.0)
+
+
+def test_english_auction_starts_at_minimum_bid_for_single_bidder():
+    auction = EnglishAuction(min_bid=20.0, max_bid=120.0)
+    result = auction.run(
+        round_id=1,
+        valuations={"a": 80.0},
+        bids={"a": 80.0},
+    )
+
+    assert result.winner_id == "a"
+    assert result.price_paid == pytest.approx(20.0)
+
+
+def test_english_auction_stops_one_increment_above_runner_up():
+    auction = EnglishAuction(min_bid=20.0, max_bid=120.0)
+    result = auction.run(
+        round_id=1,
+        valuations={"a": 100.0, "b": 80.0, "c": 60.0},
+        bids={"a": 95.5, "b": 79.5, "c": 55.0},
+    )
+
+    assert result.winner_id == "a"
+    assert result.price_paid == pytest.approx(80.0)
+    assert result.profits["a"] == pytest.approx(20.0)
+
+
+def test_english_auction_rejects_empty_bid_range():
+    with pytest.raises(ValueError):
+        EnglishAuction(min_bid=50.0, max_bid=50.0)
+
+
+def test_dutch_auction_uses_one_hundred_equal_bid_decrements():
+    auction = DutchAuction(min_bid=20.0, max_bid=120.0)
+
+    assert auction.bid_decrement == pytest.approx(1.0)
+
+
+def test_dutch_auction_starts_at_maximum_bid():
+    auction = DutchAuction(min_bid=20.0, max_bid=120.0)
+    result = auction.run(
+        round_id=1,
+        valuations={"a": 120.0, "b": 80.0},
+        bids={"a": 120.0, "b": 80.0},
+    )
+
+    assert result.winner_id == "a"
+    assert result.price_paid == pytest.approx(120.0)
+
+
+def test_dutch_auction_stops_at_first_acceptable_decrement():
+    auction = DutchAuction(min_bid=20.0, max_bid=120.0)
+    result = auction.run(
+        round_id=1,
+        valuations={"a": 100.0, "b": 80.0, "c": 60.0},
+        bids={"a": 95.5, "b": 79.5, "c": 55.0},
+    )
+
+    assert result.winner_id == "a"
+    assert result.price_paid == pytest.approx(95.0)
+    assert result.profits["a"] == pytest.approx(5.0)
+
+
+def test_dutch_auction_rejects_empty_bid_range():
+    with pytest.raises(ValueError):
+        DutchAuction(min_bid=50.0, max_bid=50.0)
 
 
 def test_second_price_highest_bidder_wins():
