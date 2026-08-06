@@ -78,8 +78,9 @@ PREMADE_EXPERIMENTS: tuple[dict[str, Any], ...] = (
         "slug": "revenue-equality-test",
         "name": "Revenue Equality",
         "description": (
-            "Compares seller revenue from equilibrium first-price and truthful "
-            "second-price auctions under identical I.I.D. private values."
+            "Compares seller revenue across first-price, second-price, and "
+            "theoretical continuous English and Dutch auctions under identical "
+            "I.I.D. private values."
         ),
         "kind": ExperimentKind.revenue_equality,
         "parameters": {

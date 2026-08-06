@@ -338,9 +338,9 @@ def first_price_strategy_view() -> None:
 def revenue_equality_view() -> None:
     st.subheader("Revenue Equality")
     st.markdown(
-        "Tests whether a first-price auction with equilibrium bidders and a "
-        "second-price auction with truthful bidders produce the same expected "
-        "seller revenue under identical I.I.D. private values."
+        "Tests whether first-price, second-price, theoretical continuous English, "
+        "and theoretical continuous Dutch auctions produce the same expected "
+        "seller revenue under identical I.I.D. private values and equilibrium bids."
     )
     with st.sidebar:
         st.subheader("Revenue equality controls")
@@ -364,7 +364,7 @@ def revenue_equality_view() -> None:
 
     if run:
         try:
-            with st.spinner("Running paired first- and second-price trials..."):
+            with st.spinner("Running paired trials across four auction formats..."):
                 st.session_state[
                     "revenue_equality_result"
                 ] = cached_revenue_equality_run(
@@ -388,7 +388,8 @@ def revenue_equality_view() -> None:
         [
             ("first_price_average_revenue", "First-price avg revenue"),
             ("second_price_average_revenue", "Second-price avg revenue"),
-            ("average_revenue_difference", "Average difference"),
+            ("english_average_revenue", "English avg revenue"),
+            ("dutch_average_revenue", "Dutch avg revenue"),
         ],
     )
     if comparison["consistent_with_revenue_equality"]:
@@ -396,8 +397,11 @@ def revenue_equality_view() -> None:
     else:
         st.warning(comparison["interpretation"])
     st.caption(
-        "Difference is first-price minus second-price revenue. The test uses a "
-        "paired 95% confidence interval and records seller revenue for every trial."
+        "Each format uses the same valuation draws. The omnibus result uses a "
+        "one-way repeated-measures ANOVA; significant results are followed by "
+        "paired t-tests with Holm correction. The theoretical English auction "
+        "settles at the second-highest value, and theoretical Dutch settles at "
+        "the exact highest equilibrium stopping price."
     )
 
     format_summary = result["format_summary"]

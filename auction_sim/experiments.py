@@ -16,6 +16,8 @@ from auction_sim.auctions import (
     EnglishAuction,
     FirstPriceAuction,
     SecondPriceAuction,
+    TheoreticalDutchAuction,
+    TheoreticalEnglishAuction,
 )
 from auction_sim.config import ExperimentConfig
 from auction_sim.data import results_to_dataframe
@@ -60,6 +62,10 @@ def make_auction(
         return EnglishAuction(min_bid=min_bid, max_bid=max_bid)
     if auction_type == "dutch":
         return DutchAuction(min_bid=min_bid, max_bid=max_bid)
+    if auction_type == "theoretical_english":
+        return TheoreticalEnglishAuction()
+    if auction_type == "theoretical_dutch":
+        return TheoreticalDutchAuction()
     raise ValueError(f"Unknown auction type: {auction_type}")
 
 

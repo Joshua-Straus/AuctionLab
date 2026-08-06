@@ -5,6 +5,8 @@ from auction_sim.auctions import (
     EnglishAuction,
     FirstPriceAuction,
     SecondPriceAuction,
+    TheoreticalDutchAuction,
+    TheoreticalEnglishAuction,
 )
 
 
@@ -103,7 +105,7 @@ def test_english_auction_starts_at_minimum_bid_for_single_bidder():
     assert result.price_paid == pytest.approx(20.0)
 
 
-def test_english_auction_stops_one_increment_above_runner_up():
+def test_english_auction_winner_pays_second_highest_bid():
     auction = EnglishAuction(min_bid=20.0, max_bid=120.0)
     result = auction.run(
         round_id=1,
@@ -112,8 +114,8 @@ def test_english_auction_stops_one_increment_above_runner_up():
     )
 
     assert result.winner_id == "a"
-    assert result.price_paid == pytest.approx(80.0)
-    assert result.profits["a"] == pytest.approx(20.0)
+    assert result.price_paid == pytest.approx(79.5)
+    assert result.profits["a"] == pytest.approx(20.5)
 
 
 def test_english_auction_rejects_empty_bid_range():
@@ -155,6 +157,30 @@ def test_dutch_auction_stops_at_first_acceptable_decrement():
 def test_dutch_auction_rejects_empty_bid_range():
     with pytest.raises(ValueError):
         DutchAuction(min_bid=50.0, max_bid=50.0)
+
+
+def test_theoretical_english_auction_settles_at_second_highest_value():
+    auction = TheoreticalEnglishAuction()
+    result = auction.run(
+        round_id=1,
+        valuations={"a": 90.0, "b": 72.5, "c": 40.0},
+        bids={"a": 90.0, "b": 72.5, "c": 40.0},
+    )
+
+    assert result.winner_id == "a"
+    assert result.price_paid == pytest.approx(72.5)
+
+
+def test_theoretical_dutch_auction_settles_at_exact_highest_stop():
+    auction = TheoreticalDutchAuction()
+    result = auction.run(
+        round_id=1,
+        valuations={"a": 91.0, "b": 80.0, "c": 30.0},
+        bids={"a": 60.6666666667, "b": 53.3333333333, "c": 20.0},
+    )
+
+    assert result.winner_id == "a"
+    assert result.price_paid == pytest.approx(60.6666666667)
 
 
 def test_second_price_highest_bidder_wins():

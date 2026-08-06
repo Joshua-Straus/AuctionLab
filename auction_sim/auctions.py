@@ -124,16 +124,6 @@ class EnglishAuction(Auction):
     def bid_increment(self) -> float:
         return (self.max_bid - self.min_bid) / 100
 
-    def _bid_step(self, bid: float) -> int:
-        """Convert a bidder's maximum bid to the highest reachable grid step."""
-        bounded_bid = min(self.max_bid, max(self.min_bid, bid))
-        return min(
-            100,
-            math.floor(
-                (bounded_bid - self.min_bid) / self.bid_increment + 1e-12
-            ),
-        )
-
     def run(
         self,
         round_id: int,
@@ -143,27 +133,22 @@ class EnglishAuction(Auction):
         if not bids:
             raise ValueError("Cannot run auction with no bids.")
 
-        bid_steps = {
-            agent_id: self._bid_step(bid) for agent_id, bid in bids.items()
+        bounded_bids = {
+            agent_id: min(self.max_bid, max(self.min_bid, bid))
+            for agent_id, bid in bids.items()
         }
-        highest_step = max(bid_steps.values())
+        highest_bid = max(bounded_bids.values())
         tied_winners = [
             agent_id
-            for agent_id, step in bid_steps.items()
-            if step == highest_step
+            for agent_id, bid in bounded_bids.items()
+            if bid == highest_bid
         ]
         winner_id = random.choice(tied_winners)
-
-        losing_steps = [
-            step for agent_id, step in bid_steps.items() if agent_id != winner_id
-        ]
-        if not losing_steps:
-            price_step = 0
-        elif len(tied_winners) > 1:
-            price_step = highest_step
-        else:
-            price_step = min(highest_step, max(losing_steps) + 1)
-        price_paid = self.min_bid + price_step * self.bid_increment
+        price_paid = (
+            heapq.nlargest(2, bounded_bids.values())[1]
+            if len(bounded_bids) > 1
+            else self.min_bid
+        )
 
         return AuctionResult(
             round_id=round_id,
@@ -225,6 +210,61 @@ class DutchAuction(Auction):
         winner_id = random.choice(tied_winners)
         price_paid = self.max_bid - winning_step * self.bid_decrement
 
+        return AuctionResult(
+            round_id=round_id,
+            auction_type=self.auction_type,
+            winner_id=winner_id,
+            price_paid=price_paid,
+            seller_revenue=price_paid,
+            valuations=valuations,
+            bids=bids,
+            profits=_calculate_profits(valuations, winner_id, price_paid),
+        )
+
+
+@dataclass
+class TheoreticalEnglishAuction(Auction):
+    """Continuous English auction settling at the second-highest value."""
+
+    auction_type: str = "theoretical_english"
+
+    def run(
+        self,
+        round_id: int,
+        valuations: dict[str, float],
+        bids: dict[str, float],
+    ) -> AuctionResult:
+        if len(valuations) < 2:
+            raise ValueError("Theoretical English auctions require at least two bidders.")
+
+        winner_id = _select_winner(valuations)
+        price_paid = heapq.nlargest(2, valuations.values())[1]
+        return AuctionResult(
+            round_id=round_id,
+            auction_type=self.auction_type,
+            winner_id=winner_id,
+            price_paid=price_paid,
+            seller_revenue=price_paid,
+            valuations=valuations,
+            bids=bids,
+            profits=_calculate_profits(valuations, winner_id, price_paid),
+        )
+
+
+@dataclass
+class TheoreticalDutchAuction(Auction):
+    """Continuous Dutch auction settling at the highest stopping price."""
+
+    auction_type: str = "theoretical_dutch"
+
+    def run(
+        self,
+        round_id: int,
+        valuations: dict[str, float],
+        bids: dict[str, float],
+    ) -> AuctionResult:
+        winner_id = _select_winner(bids)
+        price_paid = bids[winner_id]
         return AuctionResult(
             round_id=round_id,
             auction_type=self.auction_type,

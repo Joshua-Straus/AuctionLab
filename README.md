@@ -21,7 +21,8 @@ Streamlit is an HTTP-only frontend.
 - Dedicated Vickrey weak-dominance experiment comparing truthful utility with
   an array of nearby bids under identical auction conditions
 - Dedicated first-price experiment comparing every available bidder type
-- Paired revenue-equality test with trial-level seller revenue
+- Four-format paired revenue-equivalence test using theoretical continuous
+  English and Dutch settlements with trial-level seller revenue
 - Reproducible stored experiments with parameter overrides
 
 ## Architecture
